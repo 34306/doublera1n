@@ -1,0 +1,143 @@
+[
+ {
+  "component": "TXM",
+  "evidence": [
+   "MOV X0,Xn / MOV X1,Xn / MOV W2,#0x14 / BL / CBZ W0",
+   "all three selected calls target one memcmp implementation",
+   "fourth 20-byte comparison rejected because it uses CMP after BL"
+  ],
+  "id": "txm.query-module.0",
+  "offset": 253768,
+  "originalBytes": "65faff97",
+  "replacementBytes": "000080d2",
+  "summary": "Make queryModule CDHash comparison 0 report equality"
+ },
+ {
+  "component": "TXM",
+  "evidence": [
+   "MOV X0,Xn / MOV X1,Xn / MOV W2,#0x14 / BL / CBZ W0",
+   "all three selected calls target one memcmp implementation",
+   "fourth 20-byte comparison rejected because it uses CMP after BL"
+  ],
+  "id": "txm.query-module.1",
+  "offset": 254128,
+  "originalBytes": "0bfaff97",
+  "replacementBytes": "000080d2",
+  "summary": "Make queryModule CDHash comparison 1 report equality"
+ },
+ {
+  "component": "TXM",
+  "evidence": [
+   "MOV X0,Xn / MOV X1,Xn / MOV W2,#0x14 / BL / CBZ W0",
+   "all three selected calls target one memcmp implementation",
+   "fourth 20-byte comparison rejected because it uses CMP after BL"
+  ],
+  "id": "txm.query-module.2",
+  "offset": 254532,
+  "originalBytes": "a6f9ff97",
+  "replacementBytes": "000080d2",
+  "summary": "Make queryModule CDHash comparison 2 report equality"
+ },
+ {
+  "component": "TXM",
+  "evidence": [
+   "unique six-entry loop with TST W0,#0xff00",
+   "loop advances table pointer by 8 until 0x30 bytes",
+   "selected B.EQ returns the per-entry 0x00NN30A2 error"
+  ],
+  "id": "txm.constraints.restricted-entitlements",
+  "offset": 276292,
+  "originalBytes": "20fdff54",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not reject the six restricted task-port entitlements"
+ },
+ {
+  "component": "TXM",
+  "evidence": [
+   "unique MOV/MOVK construction of error 0x000130A1 at 0x437dc",
+   "B.LO and CBZ X9 skip the benign MOV W0,#0xA1 path",
+   "fall-through branches directly to the epilogue before error construction"
+  ],
+  "id": "txm.constraints.signature-type-range",
+  "offset": 276400,
+  "originalBytes": "a3000054",
+  "replacementBytes": "1f2003d5",
+  "summary": "Keep validateConstraintsSignatureType on its benign path"
+ },
+ {
+  "component": "TXM",
+  "evidence": [
+   "unique MOV/MOVK construction of error 0x000130A1 at 0x437dc",
+   "B.LO and CBZ X9 skip the benign MOV W0,#0xA1 path",
+   "fall-through branches directly to the epilogue before error construction"
+  ],
+  "id": "txm.constraints.signature-type-null",
+  "offset": 276408,
+  "originalBytes": "690000b4",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not skip to the 0x000130A1 error construction"
+ },
+ {
+  "component": "TXM",
+  "evidence": [
+   "unique secure-channel accessor body begins at 0x2fd00",
+   "accessor and developer-mode routine reference state at 0x84db0",
+   "BTI landing pad is preserved; replacement begins after it",
+   "TBZ W9,#0 otherwise skips MOV W20,#1",
+   "NOP preserves TXM's existing propagation and final store"
+  ],
+  "id": "txm.developer-mode.publish",
+  "offset": 195208,
+  "originalBytes": "69000036",
+  "replacementBytes": "1f2003d5",
+  "summary": "Take the existing path that publishes developer mode as true"
+ },
+ {
+  "component": "TXM",
+  "evidence": [
+   "BL internal-variant check / LDRB / STRH / STRB W0 / STRB / STRH / UBFX / STRB / STRH / STRB at 0x303a8",
+   "store keeps its size, base and offset; source becomes W0"
+  ],
+  "id": "txm.permissive-flags.skip-trust-any-signature",
+  "offset": 197552,
+  "originalBytes": "9f420479",
+  "replacementBytes": "80420479",
+  "summary": "Turn on skip trust evaluation and allow any signature (+0x220)"
+ },
+ {
+  "component": "TXM",
+  "evidence": [
+   "BL internal-variant check / LDRB / STRH / STRB W0 / STRB / STRH / UBFX / STRB / STRH / STRB at 0x303a8",
+   "store keeps its size, base and offset; source becomes W0"
+  ],
+  "id": "txm.permissive-flags.local-signing",
+  "offset": 197560,
+  "originalBytes": "9f8a0839",
+  "replacementBytes": "808a0839",
+  "summary": "Turn on unrestricted local signing (+0x222)"
+ },
+ {
+  "component": "TXM",
+  "evidence": [
+   "BL internal-variant check / LDRB / STRH / STRB W0 / STRB / STRH / UBFX / STRB / STRH / STRB at 0x303a8",
+   "store keeps its size, base and offset; source becomes W0"
+  ],
+  "id": "txm.permissive-flags.profile-trust",
+  "offset": 197572,
+  "originalBytes": "889a0839",
+  "replacementBytes": "809a0839",
+  "summary": "Turn on relaxed profile trust (+0x226)"
+ },
+ {
+  "component": "TXM",
+  "evidence": [
+   "BL internal-variant check / LDRB / STRH / STRB W0 / STRB / STRH / UBFX / STRB / STRH / STRB at 0x303a8; +0x2cd is the byte the selector-42 handler tests",
+   "store keeps its size, base and offset; source becomes W0"
+  ],
+  "id": "txm.permissive-flags.cs-enforcement-task-for-pid",
+  "offset": 197576,
+  "originalBytes": "9f9a0579",
+  "replacementBytes": "809a0579",
+  "summary": "Turn on CS enforcement disable and unrestricted task_for_pid (+0x2cc)"
+ }
+]

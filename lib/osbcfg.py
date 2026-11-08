@@ -1,0 +1,101 @@
+"""Central configuration for the dual-boot build scripts.
+
+Every path and firmware file name the build scripts use comes from here. dualboot.py (lib/common.py) sets the
+variables below to a per-device work directory and a version profile; the defaults only apply when a script is
+run by hand.
+
+  OSB_WORK     build root            (default: lib/build)
+  OSB_OUT      tickets, iBoot raws, ssh key, rsep (default: out/)
+  OSB_IPSW     extracted IPSW dir     (default: $OSB_WORK/ipsw)
+  OSB_PROFILE  version profile dir    (default: resolver records in lib/osb, our own patches in patches/)
+  OSB_BOARD    device class           (default: d421ap)
+  OSB_TICKET   installed APTicket     (default: $OSB_OUT/apticket.installed.der)
+  OSB_ROOTFS   stock binaries/launchd.plist source for mkdaemon (default: <workspace>/rootfs)
+"""
+import os, plistlib
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+JB = os.path.dirname(HERE)
+
+WORK = os.environ.get('OSB_WORK') or os.path.join(HERE, 'build')
+OUT = os.environ.get('OSB_OUT') or os.path.join(JB, 'out')
+IPSW = os.environ.get('OSB_IPSW') or os.path.join(WORK, 'ipsw')
+PROFILE = os.environ.get('OSB_PROFILE') or ''
+BOARD = os.environ.get('OSB_BOARD') or 'd421ap'
+TICKET = os.environ.get('OSB_TICKET') or os.path.join(OUT, 'apticket.installed.der')
+ROOTFS = os.environ.get('OSB_ROOTFS') or os.path.join(os.path.dirname(WORK), 'rootfs')
+
+# record files: a profile keeps everything in one directory; without one, resolver plans are read from lib/osb and
+# our own patches from patches/
+REC = PROFILE or os.path.join(HERE, 'osb')
+PATCHES = PROFILE or os.path.join(JB, 'patches')
+rec = lambda n: os.path.join(REC, n)
+patch = lambda n: os.path.join(PATCHES, n)
+work = lambda *p: os.path.join(WORK, *p)
+out = lambda *p: os.path.join(OUT, *p)
+
+_LEGACY = {  # 24B119 / d421ap names, used when the IPSW dir has no BuildManifest.plist (hand-extracted tree)
+    'ANE': 'Firmware/ane/h12_ane_fw_metis.im4p',
+    'AOP': 'Firmware/AOP/aopfw-iphone12aop.RELEASE.im4p',
+    'AVE': 'Firmware/ave/AppleAVE2FW_H12.im4p',
+    'Ap,SecurePageTableMonitor': 'Firmware/sptm.t8030.release.im4p',
+    'Ap,TrustedExecutionMonitor': 'Firmware/txm.iphoneos.release.im4p',
+    'GFX': 'Firmware/agx/armfw_g12p.im4p',
+    'ISP': 'Firmware/isp_bni/adc-zelus-d4x.im4p',
+    'PMP': 'Firmware/pmp/t8030pmp.im4p',
+    'StaticTrustCache': 'Firmware/141-09290-215.dmg.aea.trustcache',
+    'SIO': 'Firmware/SmartIOFirmware_ASCv2.im4p',
+    'WCHFirmwareUpdater': 'Firmware/WirelessPower/WirelessPower.iphone12.im4p',
+    'KernelCache': 'kernelcache.release.iphone12',
+    'DeviceTree': 'Firmware/all_flash/DeviceTree.d421ap.im4p',
+    'iBEC': 'Firmware/dfu/iBEC.d421.RELEASE.im4p',
+    'iBSS': 'Firmware/dfu/iBSS.d421.RELEASE.im4p',
+    'RestoreRamDisk': '141-10399-240.dmg',
+    'RestoreTrustCache': 'Firmware/141-10399-240.dmg.trustcache',
+    'RestoreSEP': 'Firmware/all_flash/sep-firmware.d421.RELEASE.im4p',
+}
+
+def _identity():
+    bm = os.path.join(IPSW, 'BuildManifest.plist')
+    if not os.path.exists(bm):
+        return None
+    m = plistlib.load(open(bm, 'rb'))
+    ids = [b for b in m['BuildIdentities'] if b['Info'].get('DeviceClass', '').lower() == BOARD.lower()]
+    erase = [b for b in ids if b['Info'].get('RestoreBehavior') == 'Erase']
+    if not (erase or ids):
+        raise SystemExit(f"!! BuildManifest has no identity for {BOARD}")
+    return (erase or ids)[0]
+
+_ID = _identity()
+
+def comp(key):
+    """IPSW-relative path of a BuildManifest component for this board."""
+    if _ID is None:
+        return _LEGACY[key]
+    p = _ID['Manifest'].get(key, {}).get('Info', {}).get('Path')
+    if not p:
+        raise SystemExit(f"!! BuildManifest identity for {BOARD} has no {key}")
+    return p
+
+def ipsw(key):
+    return os.path.join(IPSW, comp(key))
+
+# firmware the bootx chains pass through (restore order; RestoreLogo skipped): (manifest key, img4 name, fourcc)
+FIRMWARE_KEYS = [
+    ('ANE', 'ANE.img4', 'anef'),
+    ('AOP', 'AOP.img4', 'aopf'),
+    ('AVE', 'AVE.img4', 'avef'),
+    ('Ap,SecurePageTableMonitor', 'SPTM.img4', 'sptm'),
+    ('Ap,TrustedExecutionMonitor', 'TXM.img4', None),
+    ('GFX', 'GFX.img4', 'gfxf'),
+    ('ISP', 'ISP.img4', 'ispf'),
+    ('PMP', 'PMP.img4', 'pmpf'),
+    ('StaticTrustCache', 'StaticTrustCache.img4', 'trst'),
+    ('SIO', 'SIO.img4', 'siof'),
+    ('WCHFirmwareUpdater', 'WCH.img4', 'wchf'),
+    ('KernelCache', 'Kernelcache.img4', 'rkrn'),
+]
+
+def firmware():
+    """[(ipsw-relative path, img4 name, fourcc)], the layout mk_chain.FIRMWARE uses."""
+    return [(comp(k), o, f) for k, o, f in FIRMWARE_KEYS]

@@ -1,0 +1,51 @@
+{
+ "board": "d431ap",
+ "product_types": [
+  "iPhone12,5"
+ ],
+ "cpid": "0x8030",
+ "bdid": "0x02",
+ "build": "24B119",
+ "version": "27.2",
+ "ipsw_name": "",
+ "tested": false,
+ "generated": "2026-11-08 22:30:08",
+ "generator": {
+  "patchfinder": "patchfinder-62177a4745d5",
+  "kpatchfind": "Semantic patch finder for the dualboot-specific kernel patch"
+ },
+ "records": {
+  "kernel-boot-jit.json": 135,
+  "kernel-restore-nodebugger.json": 18,
+  "kernel-vm-fault-cs-bypass.json": 1,
+  "txm-boot-permissive.json": 16,
+  "txm-cs-only.json": 11,
+  "kernel-ramdisk.json": 5,
+  "kernel-osb.json": 7,
+  "securityd.json": 0,
+  "lockdownd.json": 0,
+  "iconservicesagent.json": 0
+ },
+ "pending_userland": true,
+ "notes": "patch records from lib/patchfinder (kernel boot-jit / restore / vm-fault-cs-bypass, TXM, daemons) + lib/kpatchfind (kernel-ramdisk: union/rootfs/jb=md0; kernel-osb: SEP-less fixes)",
+ "files": {
+  "iconservicesagent.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+  "kernel-boot-jit.json": "45ee601fe001fd42d539638f3846c1dc2e7dcd0ff08badd1eb3bcad05a99251b",
+  "kernel-osb.json": "04bbd4c20baa3434bd6af2e2d5358d62136ea4057647bb815a7f6c398139df7c",
+  "kernel-ramdisk.json": "f9997e3078de06feb689b440539cdd8f280d13b603fbf3dddd53403351d0e93a",
+  "kernel-restore-nodebugger.json": "959e854bb26adbbde9dd56e27d2a33aa14b015b877d7f7b321cfb83756e8db2e",
+  "kernel-vm-fault-cs-bypass.json": "20000576e2f5a3080ef2598b7ac42cc5f58e61dcdf615c702d16bfb55d431de3",
+  "lockdownd.ents-add.plist": "635b56a86b943b4aef742818148032ade17d15cf422d953b36f89806866aee21",
+  "lockdownd.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+  "securityd.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+  "txm-boot-permissive.json": "08f9f2e0adf0983c886497fdc1ceee72fd129c31b60dda392565358356f86b87",
+  "txm-cs-only.json": "ca874996c4bcb2948a512b136a51fba46a1b0a70c6ce753be5dc3c8d9ef9e669"
+ },
+ "precheck": {
+  "ok": true,
+  "date": "2026-11-08 22:30:10",
+  "ipsw": "3.1.707",
+  "signed": true,
+  "failed": []
+ }
+}

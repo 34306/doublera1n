@@ -1,0 +1,68 @@
+[
+ {
+  "id": "kernel.mount.union-1",
+  "offset": 54353080,
+  "originalBytes": "550c2837",
+  "replacementBytes": "1f2003d5",
+  "summary": "__mac_mount: allow MNT_UNION (tbnz wflags,#5 -> nop)",
+  "component": "kernelcache",
+  "evidence": [
+   "TBNZ W21,#5 @0xfffffff00a3d9cb8",
+   "LDRB W8,[..,#0x71] ; TBNZ #6 @0xfffffff00a3d9ce8",
+   "TBZ #5 -> 0xfffffff00a3d9cbc @0xfffffff00a3d9e3c"
+  ],
+  "va": "0xfffffff00a3d9cb8"
+ },
+ {
+  "id": "kernel.mount.rootfs",
+  "offset": 54353128,
+  "originalBytes": "08c64139",
+  "replacementBytes": "e8031faa",
+  "summary": "__mac_mount: ignore MNT_ROOTFS of covered vnode (ldrb -> mov xt,xzr)",
+  "component": "kernelcache",
+  "evidence": [
+   "TBNZ W21,#5 @0xfffffff00a3d9cb8",
+   "LDRB W8,[..,#0x71] ; TBNZ #6 @0xfffffff00a3d9ce8",
+   "TBZ #5 -> 0xfffffff00a3d9cbc @0xfffffff00a3d9e3c"
+  ],
+  "va": "0xfffffff00a3d9ce8"
+ },
+ {
+  "id": "kernel.mount.union-2",
+  "offset": 54353468,
+  "originalBytes": "15f42f36",
+  "replacementBytes": "a0ffff17",
+  "summary": "__mac_mount: allow MNT_UNION on 2nd path (tbz -> b)",
+  "component": "kernelcache",
+  "evidence": [
+   "TBNZ W21,#5 @0xfffffff00a3d9cb8",
+   "LDRB W8,[..,#0x71] ; TBNZ #6 @0xfffffff00a3d9ce8",
+   "TBZ #5 -> 0xfffffff00a3d9cbc @0xfffffff00a3d9e3c"
+  ],
+  "va": "0xfffffff00a3d9e3c"
+ },
+ {
+  "id": "kernel.rootdev.rename",
+  "offset": 734832,
+  "originalBytes": "7264",
+  "replacementBytes": "6a62",
+  "summary": "XNU boot-arg 'rd' -> 'jb' (bsd_init / IOFindBSDRoot share the string; kexts don't see rd=md0)",
+  "component": "kernelcache",
+  "evidence": [
+   "\"rd\" @0xfffffff0070b7670 used by fn 0xfffffff00a6bb9b0 with 'md0'"
+  ],
+  "va": "0xfffffff0070b7670"
+ },
+ {
+  "id": "kernel.apfs.rd.rename",
+  "offset": 12088756,
+  "originalBytes": "726400",
+  "replacementBytes": "6a6200",
+  "summary": "APFS root-mount ramdisk check: boot-arg 'rd' -> 'jb', so APFS roots on md0 with jb=md0",
+  "component": "kernelcache",
+  "evidence": [
+   "\"rd\" @0xfffffff007b8b5b4 used by fn 0xfffffff00a05c8a0 with 'rootdev'"
+  ],
+  "va": "0xfffffff007b8b5b4"
+ }
+]

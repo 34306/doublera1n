@@ -1,0 +1,223 @@
+[
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "same-length RELEASE_ARM64_T8030 -> PATCHED_ARM64_T8030",
+   "exactly two occurrences in the kernelcache",
+   "SoC token read from the binary",
+   "no data moves, container layout unchanged"
+  ],
+  "id": "kernel.identity.0",
+  "offset": 258750,
+  "originalBytes": "2f52454c454153455f41524d36345f5438303330",
+  "replacementBytes": "2f504154434845445f41524d36345f5438303330",
+  "summary": "Mark kernel version string 0 (T8030) as patched"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "same-length RELEASE_ARM64_T8030 -> PATCHED_ARM64_T8030",
+   "exactly two occurrences in the kernelcache",
+   "SoC token read from the binary",
+   "no data moves, container layout unchanged"
+  ],
+  "id": "kernel.identity.1",
+  "offset": 258852,
+  "originalBytes": "2f52454c454153455f41524d36345f5438303330",
+  "replacementBytes": "2f504154434845445f41524d36345f5438303330",
+  "summary": "Mark kernel version string 1 (T8030) as patched"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique diagnostic phrase: Failed to find the root snapshot",
+   "unique ADRP+ADD reference to its containing C string",
+   "conditional target is uniquely closest to that xref within the 0x40-byte panic-block window"
+  ],
+  "id": "kernel.panic.root-snapshot",
+  "offset": 50294348,
+  "originalBytes": "28062837",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not enter the root-snapshot panic block"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique diagnostic phrase: root volume seal is broken",
+   "unique ADRP+ADD reference to its containing C string",
+   "conditional target is uniquely closest to that xref within the 0x40-byte panic-block window"
+  ],
+  "id": "kernel.panic.seal-broken",
+  "offset": 49691412,
+  "originalBytes": "60017037",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not enter the seal-broken panic block"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique diagnostic phrase: rootvp not authenticated after mounting",
+   "unique ADRP+ADD reference to its containing C string",
+   "conditional target is uniquely closest to that xref within the 0x40-byte panic-block window"
+  ],
+  "id": "kernel.panic.rootvp-authentication",
+  "offset": 57102924,
+  "originalBytes": "00130035",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not enter the rootvp-authentication panic block"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique diagnostic phrase: unencrypted data volume is not allowed",
+   "unique ADRP+ADD reference to its containing C string",
+   "conditional target is uniquely closest to that xref within the 0x40-byte panic-block window"
+  ],
+  "id": "kernel.panic.unencrypted-data-volume",
+  "offset": 50299520,
+  "originalBytes": "a8000037",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not enter the unencrypted-data-volume panic block"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique PACIBSP function with saved x3 out-parameter",
+   "stack result is passed to a lookup call and followed by result/out-parameter guards"
+  ],
+  "id": "kernel.amfi.trust-cache.0",
+  "offset": 32510596,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "5f2403d5",
+  "summary": "Make AMFI trust-cache lookup succeed (word 1/5)"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique PACIBSP function with saved x3 out-parameter",
+   "stack result is passed to a lookup call and followed by result/out-parameter guards"
+  ],
+  "id": "kernel.amfi.trust-cache.1",
+  "offset": 32510600,
+  "originalBytes": "ffc300d1",
+  "replacementBytes": "200080d2",
+  "summary": "Make AMFI trust-cache lookup succeed (word 2/5)"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique PACIBSP function with saved x3 out-parameter",
+   "stack result is passed to a lookup call and followed by result/out-parameter guards"
+  ],
+  "id": "kernel.amfi.trust-cache.2",
+  "offset": 32510604,
+  "originalBytes": "f44f01a9",
+  "replacementBytes": "430000b4",
+  "summary": "Make AMFI trust-cache lookup succeed (word 3/5)"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique PACIBSP function with saved x3 out-parameter",
+   "stack result is passed to a lookup call and followed by result/out-parameter guards"
+  ],
+  "id": "kernel.amfi.trust-cache.3",
+  "offset": 32510608,
+  "originalBytes": "fd7b02a9",
+  "replacementBytes": "600000f9",
+  "summary": "Make AMFI trust-cache lookup succeed (word 4/5)"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique PACIBSP function with saved x3 out-parameter",
+   "stack result is passed to a lookup call and followed by result/out-parameter guards"
+  ],
+  "id": "kernel.amfi.trust-cache.4",
+  "offset": 32510612,
+  "originalBytes": "fd830091",
+  "replacementBytes": "c0035fd6",
+  "summary": "Make AMFI trust-cache lookup succeed (word 5/5)"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "function uniquely owns the Validation Category diagnostic"
+  ],
+  "id": "kernel.amfi.launch-constraints.result",
+  "offset": 32530360,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from AMFI launch-constraint validation"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.amfi.launch-constraints.return",
+  "offset": 32530364,
+  "originalBytes": "ff0306d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return immediately after the launch-constraint result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique shared-pointer byte accessor masked to bit zero"
+  ],
+  "id": "kernel.amfi.developer-mode.result",
+  "offset": 57674968,
+  "originalBytes": "e8a8fe90",
+  "replacementBytes": "20008052",
+  "summary": "Report developer mode enabled"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired accessor stub"
+  ],
+  "id": "kernel.amfi.developer-mode.return",
+  "offset": 57674972,
+  "originalBytes": "08c545f9",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced developer-mode result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "callee of the function owning the code-signature validation diagnostic",
+   "CMP W0,#imm follows a BL and is immediately consumed by B.NE",
+   "fallthrough formats a diagnostic and branches to the shared reject tail"
+  ],
+  "id": "kernel.amfi.post-validation.compare",
+  "offset": 32562552,
+  "originalBytes": "1f040071",
+  "replacementBytes": "ff070071",
+  "summary": "Force the post-validation comparison unequal so the accept branch is taken"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "within 80 bytes of the Swift Playgrounds development entitlement xref",
+   "BL is immediately followed by a conditional test of w0 and the two helpers differ"
+  ],
+  "id": "kernel.amfi.dyld-policy.0",
+  "offset": 32563940,
+  "originalBytes": "c5620094",
+  "replacementBytes": "20008052",
+  "summary": "Make dyld policy helper 1 succeed"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "within 80 bytes of the Swift Playgrounds development entitlement xref",
+   "BL is immediately followed by a conditional test of w0 and the two helpers differ"
+  ],
+  "id": "kernel.amfi.dyld-policy.1",
+  "offset": 32563952,
+  "originalBytes": "8bdeff97",
+  "replacementBytes": "20008052",
+  "summary": "Make dyld policy helper 2 succeed"
+ }
+]
