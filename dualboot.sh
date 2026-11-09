@@ -14,7 +14,7 @@ C_SEL=$'\033[1;30;46m'; C_TITLE=$'\033[1;36m'; C_WARN=$'\033[1;33m'; C_ERR=$'\03
 # The USB status line comes from a background poller while a menu waits for keys (a USB query can take seconds,
 # far too slow for every key press). It is stopped before any action runs, so it never talks to the phone
 # while a boot chain is being sent.
-STATUS_DIR=$(mktemp -d "${TMPDIR:-/tmp}/dualboot-menu.XXXXXX")
+STATUS_DIR=$(mktemp -d "${TMPDIR:-/tmp}/dualboot-menu.XXXXXX") || exit 1
 POLLER=
 start_poller() {
     touch "$STATUS_DIR/run"
@@ -113,6 +113,7 @@ choose_version() {
     labels+=("Detect from the iPhone running iOS (USB)" "From an IPSW file ..." "Back")
     menu "Select the iOS version INSTALLED on the iPhone (2nd Data must match it)" "${labels[@]}"
     local i=$MENU_INDEX n=${#builds[@]}
+    [ "$i" -ge 0 ] || return 0
     if [ "$i" -lt "$n" ]; then run_cmd select --build "${builds[$i]}"
     elif [ "$i" -eq "$n" ]; then run_cmd select --auto
     elif [ "$i" -eq $((n + 1)) ]; then
@@ -121,10 +122,10 @@ choose_version() {
     fi
 }
 
-# menu "title" opt1 opt2 ...  -> sets MENU_INDEX (0-based)
+# menu "title" opt1 opt2 ...  -> sets MENU_INDEX (0-based, -1 on cancel)
 menu() {
     local title="$1"; shift
-    local n=$# cur=0 key i
+    local n=$# cur=0 key i read_rc
     local -a opts=("$@")
     tput civis 2>/dev/null
     start_poller
@@ -139,7 +140,14 @@ menu() {
         done
         printf '\033[J'
         # wait for a key; every second without one, repaint only if the USB status changed
-        while ! IFS= read -rsn1 -t 1 key; do
+        while true; do
+            IFS= read -rsn1 -t 1 key && break
+            read_rc=$?
+            # Bash returns a status greater than 128 on timeout. Cancel on EOF or other read errors.
+            if [ "$read_rc" -le 128 ]; then
+                key=q
+                break
+            fi
             [ "$(cat "$STATUS_DIR/dev" 2>/dev/null)" != "$DEV_SHOWN" ] && { key=REDRAW; break; }
         done
         if [ "$key" = REDRAW ]; then
@@ -153,7 +161,8 @@ menu() {
         elif [ -z "$key" ]; then
             break
         elif [ "$key" = "q" ] || [ "$key" = "Q" ]; then
-            cur=$((n - 1)); break
+            cur=-1
+            break
         elif [[ "$key" =~ [1-9] ]] && [ "$key" -le "$n" ]; then
             cur=$((key - 1)); break
         fi
@@ -217,6 +226,7 @@ os2_choose_build() {
     labels+=("From an IPSW file ..." "Back")
     menu "Which iOS for the 2nd iOS? (any iOS 27.x; it gets its own System + Data volumes)" "${labels[@]}"
     local i=$MENU_INDEX n=${#builds[@]}
+    [ "$i" -ge 0 ] || return 0
     if [ "$i" -lt "$n" ]; then run_cmd os2 install --build "${builds[$i]}"
     elif [ "$i" -eq "$n" ]; then
         header; read -rp "  Path to the .ipsw: " p
@@ -254,6 +264,6 @@ while true; do
                if confirm "Really delete DataB?"; then run_cmd remove; fi; fi ;;
         4) os2_menu ;;
         5) more_menu ;;
-        6) clear; exit 0 ;;
+        -1|6) clear; exit 0 ;;
     esac
 done
