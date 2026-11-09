@@ -19,20 +19,21 @@ But this is not a great solution, since SEP is disable for 2nd data partition, y
 ```
 git clone https://github.com/34306/doublera1n.git
 cd doublera1n
-./setup.sh        # auto setup environment
-./dualboot.sh     # menu: ↑/↓ select, Enter run
-./boot.sh         # boot jailbreak data volume (phone in pwned DFU)
+./boot.sh
 ```
-On first use both scripts run `./setup.sh`, which installs the Homebrew tools (libimobiledevice, libirecovery, ldid, libusb, ipsw) and creates `.venv` from `requirements.txt`. `.venv/` is machine-local, run `./setup.sh` again any time to repair it (if needed).
+That's it. Plug the iPhone in booted into iOS (its version is read automatically), then put it into pwned DFU when it asks. The first time `boot.sh` installs 2nd Data (it asks for pwned DFU once more for the first boot), every time after it just boots 2nd Data.
+
+On first use it runs `./setup.sh` by itself, which installs the Homebrew tools (libimobiledevice, libirecovery, ldid, libusb, ipsw) and creates `.venv` from `requirements.txt`. `.venv/` is machine-local, run `./setup.sh` again any time to repair it (if needed).
+
+Prefer a menu? `./dualboot.sh` (↑/↓ select, Enter run):
 
 | Menu | What it does |
 |---|---|
-| Boot 2nd Data | sends the prebuilt boot chain and waits for 2nd Data (SSH) |
-| Select iOS version | the iOS build installed on the phone, followed by a pre-check |
-| Install 2nd Data | only when there is no DataB yet: setup ramdisk creates DataB, blah blah... |
-| Re-apply fixes | pushes every userland fix again over SSH (2nd Data running) |
+| Start | same as `./boot.sh`: installs 2nd Data the first time, boots it after |
 | SSH into 2nd Data | `ssh root@` through iproxy (pinned to the phone's UDID) |
+| Re-apply fixes | pushes every userland fix again over SSH (2nd Data running) |
 | Remove 2nd Data | deletes DataB and our files in Preboot, back to a single stock OS |
+| More | pick the iOS version by hand, status / check the Mac, run `setup.sh` again |
 
 > [!WARNING]
 > When setting up 2nd Data, if the iPhone asks **iPhone Partially Set Up**, choose **Continue with Partial Setup**. Do NOT choose **Erase and Start Over**.

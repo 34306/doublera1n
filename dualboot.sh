@@ -11,13 +11,47 @@ PY=.venv/bin/python3
 C_RESET=$'\033[0m'; C_DIM=$'\033[2m'; C_BOLD=$'\033[1m'
 C_SEL=$'\033[1;30;46m'; C_TITLE=$'\033[1;36m'; C_WARN=$'\033[1;33m'; C_ERR=$'\033[1;31m'; C_OK=$'\033[1;32m'
 
-cleanup() { tput cnorm 2>/dev/null; stty echo 2>/dev/null; }
+# The USB status line comes from a background poller while a menu waits for keys (a USB query can take seconds,
+# far too slow for every key press). It is stopped before any action runs, so it never talks to the phone
+# while a boot chain is being sent.
+STATUS_DIR=$(mktemp -d "${TMPDIR:-/tmp}/dualboot-menu.XXXXXX")
+POLLER=
+start_poller() {
+    touch "$STATUS_DIR/run"
+    (
+        while [ -f "$STATUS_DIR/run" ]; do
+            device_line > "$STATUS_DIR/dev.tmp" 2>/dev/null && mv -f "$STATUS_DIR/dev.tmp" "$STATUS_DIR/dev"
+            for _ in 1 2 3 4 5 6 7 8 9 10; do [ -f "$STATUS_DIR/run" ] || break; sleep 0.2; done
+        done
+    ) &
+    POLLER=$!
+}
+stop_poller() {
+    rm -f "$STATUS_DIR/run"
+    [ -n "$POLLER" ] && wait "$POLLER" 2>/dev/null
+    POLLER=
+}
+
+cleanup() { stop_poller; rm -rf "$STATUS_DIR"; tput cnorm 2>/dev/null; stty echo 2>/dev/null; }
 trap cleanup EXIT
 trap 'cleanup; echo; exit 130' INT
 
+# an Apple device (vendor 0x05ac) in DFU (0x1227) or Recovery (0x1280-0x1283) is on USB
+usb_dfu_or_recovery() {
+    ioreg -p IOUSB -l -w0 2>/dev/null | awk '
+        /\+-o /          { v = ""; p = "" }
+        /"idVendor" = /  { v = $NF }
+        /"idProduct" = / { p = $NF }
+        v == 1452 && (p == 4647 || (p >= 4736 && p <= 4739)) { f = 1 }
+        END { exit !f }'
+}
+
 device_line() {
     local q mode ecid pwnd
-    q=$(irecovery -q 2>/dev/null)
+    # irecovery -q waits ~6 s when nothing is in DFU/Recovery: ask the USB registry (instant) first
+    if usb_dfu_or_recovery; then
+        q=$(irecovery -q 2>/dev/null)
+    fi
     if [ -n "$q" ]; then
         mode=$(echo "$q" | awk -F': ' '/^MODE/{print $2}')
         ecid=$(echo "$q" | awk -F': ' '/^ECID/{print $2}')
@@ -31,15 +65,30 @@ device_line() {
     else echo "${C_DIM}No iPhone on USB${C_RESET}"; fi
 }
 
+# line "text": print and clear the rest of the terminal line (in-place redraws leave no leftovers)
+line() { printf '%s\033[K\n' "$1"; }
+
+# header         -> clear the screen, query the phone now (before an action)
+# header redraw  -> repaint from the top without clearing, using the poller's last USB status (menus)
+DEV_SHOWN=
 header() {
-    clear
-    echo "${C_TITLE}╔══════════════════════════════════════════════════════════════╗${C_RESET}"
-    echo "${C_TITLE}║ doublera1n · 2nd Data · A13: iPhone 11 series, SE 2, iPad 9  ║${C_RESET}"
-    echo "${C_TITLE}╚══════════════════════════════════════════════════════════════╝${C_RESET}"
-    echo "  $(device_line)"
-    echo "  $(version_line)"
-    echo "  ${C_DIM}A normal reboot = stock iOS. 2nd Data: pwned DFU → Boot 2nd Data${C_RESET}"
-    echo
+    local dev
+    if [ "$1" = redraw ]; then
+        printf '\033[H'
+        dev=$(cat "$STATUS_DIR/dev" 2>/dev/null)
+        [ -n "$dev" ] || dev="${C_DIM}Checking USB ...${C_RESET}"
+    else
+        clear
+        dev=$(device_line)
+    fi
+    DEV_SHOWN=$dev
+    line "${C_TITLE}╔══════════════════════════════════════════════════════════════╗${C_RESET}"
+    line "${C_TITLE}║ doublera1n · 2nd Data · A13: iPhone 11 series, SE 2, iPad 9  ║${C_RESET}"
+    line "${C_TITLE}╚══════════════════════════════════════════════════════════════╝${C_RESET}"
+    line "  $dev"
+    line "  $(version_line)"
+    line "  ${C_DIM}A normal reboot = stock iOS. 2nd Data: pwned DFU → Boot 2nd Data${C_RESET}"
+    line ""
 }
 
 version_line() {
@@ -78,16 +127,24 @@ menu() {
     local n=$# cur=0 key i
     local -a opts=("$@")
     tput civis 2>/dev/null
+    start_poller
+    clear
     while true; do
-        header
-        echo "  ${C_BOLD}$title${C_RESET}   ${C_DIM}(↑/↓ select, Enter run, q quit)${C_RESET}"
-        echo
+        header redraw
+        line "  ${C_BOLD}$title${C_RESET}   ${C_DIM}(↑/↓ select, Enter run, q quit)${C_RESET}"
+        line ""
         for ((i = 0; i < n; i++)); do
-            if [ $i -eq $cur ]; then echo "   ${C_SEL} ▶ ${opts[$i]} ${C_RESET}"
-            else echo "     ${opts[$i]}"; fi
+            if [ $i -eq $cur ]; then line "   ${C_SEL} ▶ ${opts[$i]} ${C_RESET}"
+            else line "     ${opts[$i]}"; fi
         done
-        IFS= read -rsn1 key
-        if [ "$key" = $'\033' ]; then
+        printf '\033[J'
+        # wait for a key; every second without one, repaint only if the USB status changed
+        while ! IFS= read -rsn1 -t 1 key; do
+            [ "$(cat "$STATUS_DIR/dev" 2>/dev/null)" != "$DEV_SHOWN" ] && { key=REDRAW; break; }
+        done
+        if [ "$key" = REDRAW ]; then
+            continue
+        elif [ "$key" = $'\033' ]; then
             read -rsn2 -t 1 key
             case "$key" in
                 '[A') cur=$(( (cur - 1 + n) % n ));;
@@ -101,6 +158,7 @@ menu() {
             cur=$((key - 1)); break
         fi
     done
+    stop_poller
     tput cnorm 2>/dev/null
     MENU_INDEX=$cur
 }
@@ -112,9 +170,16 @@ confirm() {   # confirm "question" -> 0 if yes
 
 pause() { echo; read -rsp "  ${C_DIM}Press Enter to return to the menu...${C_RESET}" _; }
 
-run_cmd() {
+run_cmd() {   # run_cmd <dualboot.py args>; no args = Start (auto: install the first time, boot after)
     header
-    echo "  ${C_BOLD}▶ $*${C_RESET}"; echo
+    if [ $# -eq 0 ]; then
+        echo "  ${C_BOLD}▶ Start${C_RESET}: plug the iPhone in booted into iOS (its version is read), then put it into"
+        echo "  pwned DFU when asked. The first time this installs 2nd Data (it asks for pwned DFU once more);"
+        echo "  after that it just boots 2nd Data."
+    else
+        echo "  ${C_BOLD}▶ $*${C_RESET}"
+    fi
+    echo
     "$PY" dualboot.py "$@"
     local rc=$?
     echo
@@ -122,28 +187,34 @@ run_cmd() {
     pause
 }
 
+more_menu() {
+    menu "More" \
+        "Select iOS version        (Start reads it from the iPhone)" \
+        "Status / check the Mac" \
+        "Install requirements      (setup.sh)" \
+        "Back"
+    case $MENU_INDEX in
+        0) choose_version ;;
+        1) header; "$PY" dualboot.py status; echo; "$PY" dualboot.py versions; echo; "$PY" dualboot.py doctor; pause ;;
+        2) header; ./setup.sh; pause ;;
+    esac
+}
+
 while true; do
     menu "Choose an action" \
-        "Boot 2nd Data             (phone in pwned DFU)" \
-        "Select iOS version        (the one installed)" \
-        "Install 2nd Data          (creates the DataB volume)" \
-        "Re-apply fixes            (2nd Data running)" \
+        "Start                     (installs 2nd Data the first time, boots it after)" \
         "SSH into 2nd Data" \
-        "Status / check the Mac" \
-        "Install requirements      (setup.sh, first use)" \
+        "Re-apply fixes            (2nd Data running)" \
         "Remove 2nd Data           (deletes DataB, back to stock only)" \
+        "More ..." \
         "Quit"
     case $MENU_INDEX in
-        0) run_cmd boot ;;
-        1) choose_version ;;
-        2) if confirm "Install 2nd Data? (phone in pwned DFU; only ADDS the DataB volume, stock iOS is not touched)"; then
-               run_cmd install; fi ;;
-        3) run_cmd provision ;;
-        4) header; "$PY" dualboot.py ssh; pause ;;
-        5) header; "$PY" dualboot.py status; echo; "$PY" dualboot.py versions; echo; "$PY" dualboot.py doctor; pause ;;
-        6) header; ./setup.sh; pause ;;
-        7) if confirm "REMOVE 2nd Data? Everything in DataB (apps, accounts, jailbreak) is lost. Stock iOS is kept."; then
+        0) run_cmd ;;
+        1) header; "$PY" dualboot.py ssh; pause ;;
+        2) run_cmd provision ;;
+        3) if confirm "REMOVE 2nd Data? Everything in DataB (apps, accounts, jailbreak) is lost. Stock iOS is kept."; then
                if confirm "Really delete DataB?"; then run_cmd remove; fi; fi ;;
-        8) clear; exit 0 ;;
+        4) more_menu ;;
+        5) clear; exit 0 ;;
     esac
 done

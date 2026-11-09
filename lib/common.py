@@ -60,7 +60,20 @@ def host_check(need_ipsw=True):
     return bad
 
 # ----------------------------------------------------------------------------------------------- device
+APPLE_DFU_RECOVERY = (0x1227, 0x1280, 0x1281, 0x1282, 0x1283)    # USB product IDs: DFU, Recovery (iBoot)
+
+def dfu_or_recovery_on_usb():
+    """An Apple device in DFU or Recovery is on USB (pyusb enumerates in ~20 ms; `irecovery -q` itself waits ~6 s for a
+    device when there is none, which made every menu and wait loop slow)."""
+    try:
+        import usb.core
+        return usb.core.find(idVendor=0x05ac, custom_match=lambda d: d.idProduct in APPLE_DFU_RECOVERY) is not None
+    except Exception:
+        return True                  # cannot tell: let irecovery decide
+
 def irec_query():
+    if not dfu_or_recovery_on_usb():
+        return None
     r = subprocess.run(['irecovery', '-q'], capture_output=True, text=True)
     if r.returncode:
         return None

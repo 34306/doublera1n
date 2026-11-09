@@ -146,11 +146,44 @@ def cmd_rebuild(a):
     build_osb(ws)
 
 # ------------------------------------------------------------------------------------------- auto
+def _in_pwned_dfu(q):
+    return bool(q) and ((q.get('MODE') == 'DFU' and 'usbliter8' in q.get('PWND', ''))
+                        or (q.get('MODE') == 'Recovery' and 'NONC' in q and 'PWND' not in q))
+
+def _select_from_running_ios(det):
+    """The phone is booted into iOS on USB: take its board and build as the selection (2nd Data must match it)."""
+    board = {v: k for k, v in BOARD_PRODUCTS.items()}.get(det[0]) or die(f"{det[0]} is not supported (A13 only)")
+    sel = load_selected()
+    if (sel.get('board'), sel.get('build')) != (board, det[2]):
+        save_selected(board=board, build=det[2], version=det[1], ipsw='')
+    say(f"{det[0]} ({board}) on iOS {det[1]} ({det[2]})")
+
 def cmd_auto(a):
-    q, resume = current_device()
+    """One button: find the phone, install 2nd Data on first use, boot it every time after. The user only puts the
+    phone into pwned DFU when asked (install asks once more, for the first 2nd Data boot)."""
+    for k, v in (('build', None), ('ipsw', None), ('skip_precheck', False), ('no_wait', False)):
+        if not hasattr(a, k):
+            setattr(a, k, v)
+    q = irec_query()
+    if not _in_pwned_dfu(q):
+        det = detect_installed()
+        if det:
+            _select_from_running_ios(det)
+        else:
+            say("Waiting for the iPhone: plug it in booted into iOS (its version is read) or already in pwned DFU ...")
+            while True:
+                q = irec_query()
+                if _in_pwned_dfu(q):
+                    break
+                det = detect_installed()
+                if det:
+                    _select_from_running_ios(det)
+                    break
+                time.sleep(1)
+    q, resume = current_device()            # "waiting for the iPhone in pwned DFU ..." until it shows up
     if installed_ws(q):
         return cmd_boot(a)
-    say("No 2nd Data for this iPhone yet -> install")
+    say("No 2nd Data on this iPhone yet -> installing it (DataB, first boot, jailbreak)")
     return cmd_install(a)
 
 # ------------------------------------------------------------------------------------------- prepare (host side)
@@ -211,15 +244,7 @@ def version_choices(board):
     for build in sorted(set(local) | set(pub), key=lambda b: (pub.get(b, local.get(b, {})).get('version', ''), b), reverse=True):
         p, b = local.get(build), pub.get(build)
         ver = (b or p)['version']
-        tags = []
-        if p:
-            tags.append('tested on device' if p.get('tested') else 'generated profile, not device-tested')
-            pc = p.get('precheck')
-            if pc: tags.append('pre-check passed' if pc.get('ok') else 'pre-check FAILED')
-        else:
-            tags.append('no profile yet (pre-check generates it)')
-        if b: tags.append('signed by Apple' if b['signed'] else 'no longer signed')
-        out.append((build, ver, f"iOS {ver} ({build}) - " + ", ".join(tags)))
+        out.append((build, ver, f"iOS {ver} ({build})"))
     return out
 
 def ensure_profile(board, build, version='', ipsw=None):
@@ -660,7 +685,9 @@ def pair_with_mac(ws, ssh):
     r = run('idevicepair', '-u', ssh.udid, 'validate', check=False, capture=True)
     if r.returncode == 0:
         say("the Mac is paired with 2nd Data"); return
-    run('idevicepair', '-u', ssh.udid, 'pair', check=False, capture=True)
+    r = run('idevicepair', '-u', ssh.udid, 'pair', check=False, capture=True)
+    if 'SUCCESS' in (r.stdout + r.stderr):
+        say("pair OK"); return
     say("On the iPhone: tap 'Trust' (do not touch anything else while the alert is up)")
     for _ in range(3):
         if sys.stdin.isatty():
