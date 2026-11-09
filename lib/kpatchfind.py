@@ -291,9 +291,11 @@ def find_sep_booted_stubs(kc):
     out = []
     for b in booted:
         for x in xrefs(kc, im, b):
+            # the stub starts with BTI c (27.0 release+) or directly with PACIBSP (27.0 betas; also a landing pad)
             st = x
-            while st > x - 0x40 and words.get(st) != BTI_C: st -= 4
-            if words.get(st) != BTI_C: raise SystemExit(f"sep stubs: no BTI before !booted xref 0x{x:x}")
+            while st > x - 0x40 and words.get(st) not in (BTI_C, PACIBSP): st -= 4
+            if words.get(st) == PACIBSP and words.get(st - 4) == BTI_C: st -= 4
+            if words.get(st) not in (BTI_C, PACIBSP): raise SystemExit(f"sep stubs: no BTI/PACIBSP before !booted xref 0x{x:x}")
             fname = [names[n] for n in names if any(st <= y < x + 4 for y in xrefs(kc, im, n))]
             if len(fname) != 1: raise SystemExit(f"sep stubs: stub 0x{st:x} names {fname}")
             bls = [p for p, i in words.items() if is_bl(i) and bl_target(i, p) == st]

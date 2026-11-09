@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""dualboot - tethered dual-boot ("2nd Data") for iPhone 11 / 11 Pro / 11 Pro Max (A13 / T8030).
+"""dualboot - tethered dual-boot ("2nd Data") for A13 (T8030) devices: iPhone 11 / 11 Pro / 11 Pro Max,
+iPhone SE (2nd gen), iPad (9th gen).
 
 2nd Data = the phone's own stock, sealed System volume + a separate APFS volume "DataB" as /private/var, booted
 from pwned DFU with a patched kernel/iBoot and a rootless jailbreak (Procursus, Sileo, ElleKit, all fixes).
@@ -20,7 +21,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(ROOT, 'lib'))
 from common import (serial_source, parse_ticket, SerialFileTail,
                     say, warn, die, run, ask, host_check, irec_query, wait_dfu, board_of, list_profiles,
-                    find_profile, Workspace, SSH, device_udid, WORKROOT, LIB, PAYLOAD, BOARD_PRODUCTS)
+                    find_profile, Workspace, SSH, device_udid, WORKROOT, LIB, PAYLOAD, BOARD_PRODUCTS, BOARD_HELP)
 
 # ------------------------------------------------------------------------------------------- workspaces
 def workspaces_for(ecid):
@@ -300,6 +301,15 @@ def cmd_profile(a):
     run(sys.executable, os.path.join(LIB, 'mkprofile.py'), '--ipsw', a.ipsw, '--board', pick_board(a),
         *(['--force'] if a.force else []), *(['--rootfs', a.rootfs] if a.rootfs else []))
 
+def ipsw_products(path):
+    """SupportedProductTypes of an IPSW's BuildManifest (iPad IPSWs are named by marketing name, not iPad12,1)."""
+    import zipfile, plistlib
+    try:
+        with zipfile.ZipFile(path) as z:
+            return plistlib.loads(z.read('BuildManifest.plist')).get('SupportedProductTypes', [])
+    except Exception:
+        return []
+
 def find_ipsw(prof, given=None):
     if given:
         return given if os.path.exists(given) else die(f"IPSW not found: {given}")
@@ -309,14 +319,15 @@ def find_ipsw(prof, given=None):
             if n and os.path.exists(os.path.join(d, n)):
                 return os.path.join(d, n)
         for f in glob.glob(os.path.join(d, f"*_{prof['build']}_Restore.ipsw")):
-            if any(pt in f for pt in prof['product_types']):
+            if any(pt in f for pt in prof['product_types']) or set(prof['product_types']) & set(ipsw_products(f)):
                 return f
     dst = os.path.join(WORKROOT, 'ipsw'); os.makedirs(dst, exist_ok=True)
     say(f"downloading the IPSW {prof['product_types'][0]} {prof['build']} (~11 GB) into {dst} ...")
     run('ipsw', 'download', 'ipsw', '--device', prof['product_types'][0], '--build', prof['build'], '--output', dst, check=False)
     got = glob.glob(os.path.join(dst, f"*{prof['build']}*.ipsw"))
     if not got:     # betas / RCs are not on ipsw.me: AppleDB has their Apple CDN links
-        run('ipsw', 'download', 'appledb', '--os', 'iOS', '--device', prof['product_types'][0], '--build', prof['build'],
+        run('ipsw', 'download', 'appledb', '--os', 'iPadOS' if prof['product_types'][0].startswith('iPad') else 'iOS',
+            '--device', prof['product_types'][0], '--build', prof['build'],
             '--output', dst, '--confirm', check=False)
         got = glob.glob(os.path.join(dst, '**', f"*{prof['build']}*.ipsw"), recursive=True)
     return got[0] if got else die("IPSW download failed")
@@ -334,6 +345,7 @@ def extract_ipsw(ws, ipsw):
             'RestoreRamDisk', 'RestoreTrustCache', 'RestoreSEP']
     ident = [b for b in m['BuildIdentities'] if b['Info'].get('DeviceClass', '').lower() == ws.profile['board']
              and b['Info'].get('RestoreBehavior') == 'Erase'][0]
+    keys = [k for k in keys if k in ident['Manifest']]     # iPads have no WCHFirmwareUpdater (wireless charging)
     for k in keys:
         path = ident['Manifest'][k]['Info']['Path']
         if not os.path.exists(os.path.join(out, path)):
@@ -341,30 +353,43 @@ def extract_ipsw(ws, ipsw):
     say(f"IPSW: extracted {len(keys)} components")
 
 def prepare_rootfs(ws, ipsw):
-    """Stock binaries the patched daemons are built from + the launchd job cache (System/Library/xpc)."""
-    need = [p.lstrip('/') for _, p, _ in DAEMONS] + ['System/Library/xpc']
+    """Stock binaries the patched daemons are built from, the launchd job cache (System/Library/xpc) and the system
+    apps (private/var/staged_system_apps: the restore moves them off the System volume, so rdsetup cannot copy them
+    from the phone; install_system_apps uploads them to DataB)."""
+    need = [p.lstrip('/') for _, p, _ in DAEMONS] + ['System/Library/xpc', 'private/var/staged_system_apps']
     if all(os.path.exists(ws.p('rootfs', n)) for n in need):
         return
     tmp = ws.p('build/fsdmg'); shutil.rmtree(tmp, ignore_errors=True); os.makedirs(tmp)
     say("rootfs: extracting + decrypting the filesystem DMG (needs network for the AEA key; a few minutes, ~10 GB temporary) ...")
-    run('ipsw', 'extract', '--dmg', 'fs', '-o', tmp, ipsw, capture=True)
-    dmgs = [f for f in glob.glob(os.path.join(tmp, '**', '*.dmg'), recursive=True)]
+    r = run('ipsw', 'extract', '--dmg', 'fs', '-o', tmp, ipsw, capture=True)
+    log = r.stdout + r.stderr
+    dmgs = glob.glob(os.path.join(tmp, '**', '*.dmg'), recursive=True)
+    # iOS 18+ IPSWs carry the filesystem as an AEA archive and `ipsw extract --dmg` leaves it encrypted (.dmg.aea):
+    # `ipsw fw aea` fetches its key from Apple (fcs-key URL in the archive header) and writes the plain .dmg
+    for aea in [] if dmgs else glob.glob(os.path.join(tmp, '**', '*.dmg.aea'), recursive=True):
+        say(f"rootfs: decrypting {os.path.basename(aea)} ...")
+        r = run('ipsw', 'fw', 'aea', '-o', tmp, aea, check=False, capture=True)
+        log += r.stdout + r.stderr
+        os.remove(aea)
+        dmgs = glob.glob(os.path.join(tmp, '**', '*.dmg'), recursive=True)
     if not dmgs:
-        die("could not extract the filesystem DMG")
+        die("could not extract the filesystem DMG (ipsw output below; the AEA key needs network access)\n" + log[-1500:])
     mnt = ws.p('build/fsmnt'); os.makedirs(mnt, exist_ok=True)
     run('hdiutil', 'attach', '-readonly', '-nobrowse', '-noverify', '-mountpoint', mnt, dmgs[0], capture=True)
     try:
         for n in need:
             src, dst = os.path.join(mnt, n), ws.p('rootfs', n)
             os.makedirs(os.path.dirname(dst), exist_ok=True)
-            if os.path.isdir(src):
-                shutil.copytree(src, dst, dirs_exist_ok=True)
+            if not os.path.lexists(src):
+                warn(f"rootfs: the filesystem DMG has no /{n}")
+            elif os.path.isdir(src):
+                shutil.copytree(src, dst, symlinks=True, dirs_exist_ok=True)
             else:
                 shutil.copy2(src, dst)
     finally:
         run('hdiutil', 'detach', mnt, check=False, capture=True)
         shutil.rmtree(tmp, ignore_errors=True)
-    say("rootfs: xong")
+    say("rootfs: done")
 
 def prepare_tickets(ws):
     """TSS-personalised IM4M (for the setup chain and the SEP image) + rsep.img4. Needs the phone in (pwned) DFU."""
@@ -516,6 +541,8 @@ def cmd_install(a):
     a.ecid = q['ECID']
     cmd_provision(a)
     say("DONE. Finish Setup on the phone (Wi-Fi, Apple ID ...). Reboot = stock iOS; 2nd Data again: pwned DFU -> ./boot.sh")
+    warn("If the phone shows 'iPhone Partially Set Up': tap 'Continue with Partial Setup'. "
+         "NEVER 'Erase and Start Over'.")
 
 def cmd_remove(a):
     q = wait_dfu(pwned=True)
@@ -636,7 +663,10 @@ def pair_with_mac(ws, ssh):
     run('idevicepair', '-u', ssh.udid, 'pair', check=False, capture=True)
     say("On the iPhone: tap 'Trust' (do not touch anything else while the alert is up)")
     for _ in range(3):
-        input("   -> press Enter after tapping Trust ")
+        if sys.stdin.isatty():
+            input("   -> press Enter after tapping Trust ")
+        else:
+            time.sleep(20)
         r = run('idevicepair', '-u', ssh.udid, 'pair', check=False, capture=True)
         if 'SUCCESS' in (r.stdout + r.stderr):
             say("pair OK"); return
@@ -660,6 +690,13 @@ def cmd_provision(a):
     r = subprocess.run(ssh_argv(ssh) + [f'/var/jb/usr/bin/zsh {P}/provision.sh {P}'])
     if r.returncode:
         die("provision.sh reported errors - see /var/jb/var/log/dualboot-provision.log on the phone")
+    if first or getattr(a, 'apply', False):
+        # securityd and lockdownd start from the launchd cache override (/cores/daemons) before provision.sh has put
+        # obkeychain/obpair on DataB; their weak load found nothing, so restart them now (securityd first). Without
+        # this the first boot has no software keychain and lockdownd answers pairing with MissingValue (-12).
+        say("restarting securityd + lockdownd so they load obkeychain/obpair ...")
+        ssh.run('launchctl kickstart -k system/com.apple.securityd; sleep 3; '
+                'launchctl kickstart -k system/com.apple.mobile.lockdown; sleep 3', check=False)
     install_system_apps(ws, ssh)
     ws.state['provisioned'] = time.strftime('%Y-%m-%d %H:%M:%S'); ws.save()
     if first or getattr(a, 'apply', False):
@@ -669,7 +706,7 @@ def cmd_provision(a):
         pair_with_mac(ws, ssh)
     else:
         say("updated. Daemon/boot changes take effect on the next boot (or run: provision --apply)")
-    say("provision xong")
+    say("provision: done")
 
 def main():
     ap = argparse.ArgumentParser(prog='dualboot.py', description=__doc__,
@@ -688,13 +725,13 @@ def main():
     s = sub.add_parser('versions', help='iOS versions: local profiles + Apple builds'); s.add_argument('--board')
     s.add_argument('--plain', action='store_true', help=argparse.SUPPRESS)
     s = sub.add_parser('select', help='choose the iOS version installed on the phone')
-    s.add_argument('--board', help='n104ap | d421ap | d431ap (default: the connected iPhone)'); s.add_argument('--build'); s.add_argument('--ipsw')
+    s.add_argument('--board', help=BOARD_HELP); s.add_argument('--build'); s.add_argument('--ipsw')
     s.add_argument('--auto', action='store_true', help='read it from the phone (booted into iOS, USB)')
     s.add_argument('--no-precheck', action='store_true', help="don't run the pre-check after selecting")
     s = sub.add_parser('precheck', help='check every patch for a build before touching the phone (ipsw --remote)')
     s.add_argument('--build'); s.add_argument('--board'); s.add_argument('--ipsw')
     s = sub.add_parser('profile', help='generate a version profile from an IPSW (every patch re-resolved)')
-    s.add_argument('--ipsw', required=True); s.add_argument('--board', help='n104ap | d421ap | d431ap (default: the connected iPhone)')
+    s.add_argument('--ipsw', required=True); s.add_argument('--board', help=BOARD_HELP)
     s.add_argument('--rootfs'); s.add_argument('--force', action='store_true')
     a = ap.parse_args()
     {'boot': cmd_boot, 'install': cmd_install, 'remove': cmd_remove, 'provision': cmd_provision,

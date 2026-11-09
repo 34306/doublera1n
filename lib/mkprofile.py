@@ -26,7 +26,8 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import kpatchfind, pf
 
-BOARD_PRODUCTS = {'d421ap': ['iPhone12,3'], 'd431ap': ['iPhone12,5'], 'n104ap': ['iPhone12,1']}
+BOARD_PRODUCTS = {'d421ap': ['iPhone12,3'], 'd431ap': ['iPhone12,5'], 'n104ap': ['iPhone12,1'], 'd79ap': ['iPhone12,8'],
+                  'j181ap': ['iPad12,1'], 'j182ap': ['iPad12,2']}
 USERLAND = {  # userland plan (= profile file name) -> path in the root filesystem
     'coreauthd': 'System/Library/Frameworks/LocalAuthentication.framework/Support/coreauthd',
     'ctkd': 'System/Library/Frameworks/CryptoTokenKit.framework/ctkd',
@@ -116,6 +117,7 @@ def finalize(pdir, **upd):
 
 def generate(src, board, out_root, rootfs=None, force=False):
     fw = Firmware(src, board)
+    tmpdir = None
     try:
         pdir = os.path.join(out_root, f'{board}-{fw.build}')
         if os.path.exists(os.path.join(pdir, 'profile.json')) and not force:
@@ -161,6 +163,8 @@ def generate(src, board, out_root, rootfs=None, force=False):
         return pdir
     finally:
         fw.close()
+        if tmpdir and os.path.isdir(tmpdir):      # a site failed to resolve: leave no half-written <board>-<build>.new
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 def main():

@@ -49,8 +49,10 @@ obhook() { cc -arch "$1" -miphoneos-version-min=15.0 -isysroot "$SDK" -dynamicli
 fat "$BOOT/obhook.dylib" obhook; ldid -S "$BOOT/obhook.dylib"
 
 # ---------------------------------------------------------------- setup ramdisk (payload/setup)
+# it runs as restored_external: the platform policy only lets it open /dev/disk* (APFSVolumeDelete in remove mode
+# loads the container from /dev/disk1) with disk-device-access, like the stock restored_external and newfs_apfs
 cc "${CF[@]}" "$SRC/rdsetup.c" -framework CoreFoundation -framework IOKit -o "$SETUP/rdsetup"
-ldid -S "$SETUP/rdsetup"
+ldid -S"$SRC/rdsetup.ents.plist" "$SETUP/rdsetup"
 
 # ---------------------------------------------------------------- DataB / Preboot (payload/device)
 systemhook() { cc -arch "$1" -miphoneos-version-min=15.0 -isysroot "$SDK" -dynamiclib -O2 -Wall \
@@ -78,6 +80,11 @@ ldid -S "$DEV/obcoreauth.dylib"
 # CommCenter: FDR demotion-state answers (own build.sh, writes next to its sources)
 "$SRC/obfdr/build.sh" >/dev/null
 mv -f "$SRC/obfdr/obfdr.dylib" "$DEV/obfdr.dylib"; rm -f "$SRC/obfdr/obradio"
+# RemoteUI WebKit assert -> no-op (ElleKit tweak, UIKit processes)
+cc -isysroot "$SDK" -arch arm64 -arch arm64e -miphoneos-version-min=15.0 -O2 -Wall -dynamiclib -lobjc \
+   -install_name /var/jb/Library/MobileSubstrate/DynamicLibraries/obremoteui.dylib \
+   -o "$DEV/obremoteui.dylib" "$SRC/obremoteui/obremoteui.m"
+ldid -S "$DEV/obremoteui.dylib"; cp "$SRC/obremoteui/obremoteui.plist" "$DEV/obremoteui.plist"
 # PosterBoard repair watcher, persona 99 for Sileo's root helper
 (cd "$SRC/pfwatch" && cc -isysroot "$SDK" -arch arm64 -arch arm64e -miphoneos-version-min=26.0 -O2 -Wall \
    -framework Foundation pfwatch.m -o "$DEV/pfwatch")

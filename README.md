@@ -1,4 +1,4 @@
-# doublera1n: jailbreak your iPhone 11 by using a new data volume
+# doublera1n: jailbreak your iPhone 11/SE2 by using a new data volume
 
 > [!CAUTION]
 > CURRENTLY SUPPORTS iOS: 27.0-27.2 ON MAIN OS
@@ -17,6 +17,8 @@ But this is not a great solution, since SEP is disable for 2nd data partition, y
 
 ## Quick start
 ```
+git clone https://github.com/34306/doublera1n.git
+cd doublera1n
 ./setup.sh        # auto setup environment
 ./dualboot.sh     # menu: ↑/↓ select, Enter run
 ./boot.sh         # boot jailbreak data volume (phone in pwned DFU)
@@ -32,13 +34,16 @@ On first use both scripts run `./setup.sh`, which installs the Homebrew tools (l
 | SSH into 2nd Data | `ssh root@` through iproxy (pinned to the phone's UDID) |
 | Remove 2nd Data | deletes DataB and our files in Preboot, back to a single stock OS |
 
+> [!WARNING]
+> When setting up 2nd Data, if the iPhone asks **iPhone Partially Set Up**, choose **Continue with Partial Setup**. Do NOT choose **Erase and Start Over**.
+
 I also fixed a lot of problems such as Wifi did not auto connect when reboot, deep sleep panic the device, SEP-less panic stuff, etc. You can check patches i did in the repo as well.
 
 ## Requirements
 - A Mac (Apple silicon) with Homebrew. `setup.sh` installs libimobiledevice, libirecovery, ldid, libusb, [ipsw](https://github.com/blacktop/ipsw) and creates `.venv`.
 - A usbliter8 board (RP2350) for pwned DFU. I'd recommend using the board i put the image below.
-- iPhone 11 (iPhone12,1, n104ap), 11 Pro (iPhone12,3, d421ap) or 11 Pro Max (iPhone12,5, d431ap).
-- Any iOS 27.x build of that iPhone. 2nd Data always runs the build installed on the phone (i might be extend to iOS 26 soon?)
+- A13: iPhone SE 2 (iPhone12,8, d79ap), iPad 9 Wi-Fi / Cellular (iPad12,1 j181ap / iPad12,2 j182ap), for iPad 9: added support but untested.
+- Any iOS 27.x build of that iPhone. 2nd Data always runs the build installed on the phone (i might be extend to iOS 26 soon?).
 
 ## Untested iOS version
 

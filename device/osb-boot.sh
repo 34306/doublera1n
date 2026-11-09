@@ -9,6 +9,11 @@ echo "=== osb-boot $(date)"
 #    endpoint, so keep the daemon off in OS B (launchd's disabled db is on DataB; stock iOS is unaffected).
 launchctl disable system/com.apple.corerepaird 2>/dev/null
 launchctl bootout system/com.apple.corerepaird 2>/dev/null && echo "corerepaird: booted out"
+#    seserviced (Secure Element: Apple Pay/NFC, needs the SEP) re-queries its MobileAsset type in a tight loop on
+#    2nd Data (query reply 2 -> query again), ~250 queries/s: mobileassetd's queue grows to tens of thousands and
+#    every other asset/catalog request waits behind it - Setup's Software Update pane never finishes its scan.
+launchctl disable system/com.apple.seserviced 2>/dev/null
+launchctl bootout system/com.apple.seserviced 2>/dev/null && echo "seserviced: booted out"
 # 1. patched daemons (/var/jb copies) replace their launchd jobs.
 #    securityd first: until obkeychain is in, the keychain (Wi-Fi password, pairing, ...) is unreadable.
 #    Jobs listed in /cores/osb-cache-jobs.txt already start from the launchd cache override (jbinit bindfs
@@ -62,9 +67,15 @@ ps -ax -o comm= | grep -q "^/var/jb/usr/bin/pfwatch$" || (nohup /var/jb/usr/bin/
     R=/private/var/tmp/sbext.iconservicesagent.result
     rm -f $R
     launchctl kickstart -k user/501/com.apple.iconservices.iconservicesagent
-    for i in {1..40}; do grep -q "consume OK" $R 2>/dev/null && break; sleep 0.5; done
+    # on a busy (first) boot the agent can take 20 s+ to come back: wait up to 60 s, nudging it every 10 s
+    # (kickstart without -k only starts it when it is not running)
+    for i in {1..120}; do
+      grep -q "consume OK" $R 2>/dev/null && break
+      (( i % 20 == 0 )) && launchctl kickstart user/501/com.apple.iconservices.iconservicesagent >/dev/null 2>&1
+      sleep 0.5
+    done
     if grep -q "consume OK" $R 2>/dev/null; then
-      /var/jb/usr/bin/uicache -a >/dev/null 2>&1 && echo "icons: /var/jb apps re-registered $(date)"
+      /var/jb/usr/bin/uicache -a >/dev/null 2>&1 && echo "icons: /var/jb apps re-registered after $((i / 2)) s $(date)"
     else
       echo "icons: iconservicesagent has no /var/jb token ($(cat $R 2>/dev/null))"
     fi

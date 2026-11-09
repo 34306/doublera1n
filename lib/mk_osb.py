@@ -55,6 +55,8 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     src = {out[:-5]: (path, fcc) for path, out, fcc in osbcfg.firmware()}   # same sources/fourccs as the setup chain
     for n in PASSTHROUGH:
+        if n not in src:                      # not in this board's manifest (WCH on iPads)
+            continue
         path, fcc = src[n]
         fw = IM4P(open(os.path.join(IPSW, path), 'rb').read())
         if fcc: fw.fourcc = fcc

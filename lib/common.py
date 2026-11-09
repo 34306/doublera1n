@@ -85,9 +85,12 @@ def wait_dfu(pwned=True, timeout=None):
             die("timed out waiting for pwned DFU")
         time.sleep(1)
 
-# A13 (T8030, CPID 0x8030) boards: iPhone 11 / 11 Pro / 11 Pro Max. Values from the IPSW BuildManifests (ApBoardID).
-A13_BOARDS = {0x04: 'n104ap', 0x06: 'd421ap', 0x02: 'd431ap'}
-BOARD_PRODUCTS = {'n104ap': 'iPhone12,1', 'd421ap': 'iPhone12,3', 'd431ap': 'iPhone12,5'}
+# A13 (T8030, CPID 0x8030) boards: iPhone 11 / 11 Pro / 11 Pro Max, iPhone SE (2nd gen), iPad (9th gen) Wi-Fi /
+# Cellular. Values from the IPSW BuildManifests (ApBoardID).
+A13_BOARDS = {0x04: 'n104ap', 0x06: 'd421ap', 0x02: 'd431ap', 0x10: 'd79ap', 0x18: 'j181ap', 0x1A: 'j182ap'}
+BOARD_PRODUCTS = {'n104ap': 'iPhone12,1', 'd421ap': 'iPhone12,3', 'd431ap': 'iPhone12,5', 'd79ap': 'iPhone12,8',
+                  'j181ap': 'iPad12,1', 'j182ap': 'iPad12,2'}
+BOARD_HELP = 'n104ap | d421ap | d431ap | d79ap | j181ap | j182ap (default: the connected device)'
 
 def _hex(v):
     try: return int(str(v), 16)

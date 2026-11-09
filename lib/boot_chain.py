@@ -18,6 +18,7 @@ CTL = os.environ.get('USBLITER8CTL') or os.path.join(JB, 'tools/usbliter8ctl')
 FIRMWARE = [('ANE.img4', 0), ('AOP.img4', 0), ('AVE.img4', 1), ('SPTM.img4', 3), ('TXM.img4', 0),
             ('GFX.img4', 0), ('ISP.img4', 1), ('PMP.img4', 0), ('StaticTrustCache.img4', 0),
             ('RestoreTrustCache.img4', 0), ('SIO.img4', 0), ('WCH.img4', 0)]
+OPTIONAL = {'WCH.img4'}             # wireless-charging firmware: iPads have none
 if OSB: FIRMWARE = [f for f in FIRMWARE if f[0] != 'StaticTrustCache.img4']   # System TC sent as rtsc (mk_osb.py)
 
 def recovery(timeout=40):
@@ -97,7 +98,10 @@ def main():
 
 def stages_from_firmware():
     print("[3] firmware", flush=True)
-    for name, pause in FIRMWARE: send(name, 'firmware', pause)
+    for name, pause in FIRMWARE:
+        if name in OPTIONAL and not os.path.exists(os.path.join(C, name)):
+            print(f" - {name} (not on this board)", flush=True); continue
+        send(name, 'firmware', pause)
     if OSB and not OSBJB:
         time.sleep(2)
     else:

@@ -96,6 +96,11 @@ FIRMWARE_KEYS = [
     ('KernelCache', 'Kernelcache.img4', 'rkrn'),
 ]
 
+def has(key):
+    """The board's BuildManifest identity lists this component (iPads have no WCHFirmwareUpdater)."""
+    return _ID is None or bool(_ID['Manifest'].get(key, {}).get('Info', {}).get('Path'))
+
 def firmware():
-    """[(ipsw-relative path, img4 name, fourcc)], the layout mk_chain.FIRMWARE uses."""
-    return [(comp(k), o, f) for k, o, f in FIRMWARE_KEYS]
+    """[(ipsw-relative path, img4 name, fourcc)], the layout mk_chain.FIRMWARE uses (components the board lacks are
+    left out)."""
+    return [(comp(k), o, f) for k, o, f in FIRMWARE_KEYS if has(k)]

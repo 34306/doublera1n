@@ -83,6 +83,14 @@ if ! dpkg-divert --list 2>/dev/null | grep -q " /var/jb/usr/bin/uicache "; then
 fi
 inst $P/scripts/uicache.wrapper.sh  /var/jb/usr/bin/uicache 755
 
+step "libkrw0 plugin (the bootstrap's libkrw0 depends on libkrw0-plugin: without one apt/Sileo refuse every install)"
+# libkrw0-tfp0 (Procursus, sha256 be27d936...) only satisfies the dependency; there is no kernel r/w for userland
+# on 2nd Data, so libkrw calls keep failing cleanly
+if [[ "$(dpkg-query -W -f='${Status}' libkrw0-tfp0 2>/dev/null)" != "install ok installed" ]]; then
+    dpkg -i $P/pkgs/libkrw0-tfp0_1.1.1-2_iphoneos-arm64.deb >/dev/null 2>&1 && print -r -- "  + libkrw0-tfp0" \
+        || bad "dpkg -i libkrw0-tfp0"
+fi
+
 step "ElleKit (tweak loader; injection itself comes from obhook in launchd)"
 if ! dpkg-divert --list 2>/dev/null | grep -q "ellekit-loader"; then
     dpkg-divert --local --rename --divert /var/jb/etc/rc.d/ellekit-loader.osb-disabled \
@@ -96,6 +104,9 @@ mkdir -p /var/jb/Library/MobileSubstrate/DynamicLibraries
 step "PreferenceLoader27 (tweak settings rows in the iOS 27 SwiftUI Settings sidebar; needs the preferenceloader package)"
 inst $P/device/PreferenceLoader27.dylib /var/jb/Library/MobileSubstrate/DynamicLibraries/PreferenceLoader27.dylib 755
 inst $P/device/PreferenceLoader27.plist /var/jb/Library/MobileSubstrate/DynamicLibraries/PreferenceLoader27.plist 644
+step "obremoteui (RemoteUI web views: the diagnostics-mode WebKit assert crashes Setup's Apple Account pages)"
+inst $P/device/obremoteui.dylib /var/jb/Library/MobileSubstrate/DynamicLibraries/obremoteui.dylib 755
+inst $P/device/obremoteui.plist /var/jb/Library/MobileSubstrate/DynamicLibraries/obremoteui.plist 644
 
 step "Sileo (re-signed for OS B: uid 501, persona-based root helper, reports palera1n rootless)"
 if [[ "$(dpkg-query -W -f='${Status}' org.coolstar.sileo 2>/dev/null)" != "install ok installed" ]]; then

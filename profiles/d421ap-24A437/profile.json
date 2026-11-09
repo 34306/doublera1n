@@ -40,5 +40,12 @@
   "securityd.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
   "txm-boot-permissive.json": "5d348beec14ad3a03d5216a123868ca46d50e71b4ff6f9a15cee241ea2516a3a",
   "txm-cs-only.json": "479ea4600937e2e850e3d5cd7f926e6a2d2d7bcbc79dffe2588cb468d77ecd5e"
+ },
+ "precheck": {
+  "ok": true,
+  "date": "2026-11-09 08:25:27",
+  "ipsw": "3.1.707",
+  "signed": false,
+  "failed": []
  }
 }

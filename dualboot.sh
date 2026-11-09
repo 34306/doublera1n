@@ -34,7 +34,7 @@ device_line() {
 header() {
     clear
     echo "${C_TITLE}╔══════════════════════════════════════════════════════════════╗${C_RESET}"
-    echo "${C_TITLE}║    dualboot · 2nd Data · iPhone 11 / 11 Pro / 11 Pro Max     ║${C_RESET}"
+    echo "${C_TITLE}║ doublera1n · 2nd Data · A13: iPhone 11 series, SE 2, iPad 9  ║${C_RESET}"
     echo "${C_TITLE}╚══════════════════════════════════════════════════════════════╝${C_RESET}"
     echo "  $(device_line)"
     echo "  $(version_line)"

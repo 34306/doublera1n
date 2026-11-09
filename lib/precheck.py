@@ -78,14 +78,24 @@ def apple_builds(product):
             for f in d.get('firmwares', [])]
 
 
+# products that ship in one IPSW: AppleDB sometimes lists a build under only one of them
+SHARED_IPSW = {'iPhone12,3': ('iPhone12,5',), 'iPhone12,5': ('iPhone12,3',)}
+
 def appledb_build(product, build):
     """Betas and RCs are not on ipsw.me: ask AppleDB through `ipsw download appledb --urls` (Apple CDN links)."""
-    try:
-        r = subprocess.run(['ipsw', 'download', 'appledb', '--os', 'iOS', '--device', product, '--build', build, '--urls'],
-                           capture_output=True, text=True, timeout=180)
-    except Exception:
-        return None
-    urls = [u for u in re.findall(r'https://\S+?_Restore\.ipsw', r.stdout + r.stderr) if product in u and f'_{build}_' in u]
+    urls = []
+    for dev in (product,) + SHARED_IPSW.get(product, ()):
+        try:
+            r = subprocess.run(['ipsw', 'download', 'appledb', '--os', 'iPadOS' if dev.startswith('iPad') else 'iOS',
+                                '--device', dev, '--build', build, '--urls'],
+                               capture_output=True, text=True, timeout=180)
+        except Exception:
+            continue
+        # iPhone IPSWs list their product types in the name; iPad ones use a marketing name (iPad_10.2_2021_...)
+        urls = [u for u in re.findall(r'https://\S+?_Restore\.ipsw', r.stdout + r.stderr)
+                if f'_{build}_' in u and (product in u or not re.search(r'(iPhone|iPad)\d+,\d+', u.rsplit('/', 1)[-1]))]
+        if urls:
+            break
     if not urls:
         return None
     m = re.search(r'_(\d+(?:\.\d+)+)_' + re.escape(build) + '_', urls[0])
