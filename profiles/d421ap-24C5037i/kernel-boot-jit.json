@@ -1,0 +1,1625 @@
+[
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "same-length RELEASE_ARM64_T8030 -> PATCHED_ARM64_T8030",
+   "exactly two occurrences in the kernelcache",
+   "SoC token read from the binary",
+   "no data moves, container layout unchanged"
+  ],
+  "id": "kernel.identity.0",
+  "offset": 259328,
+  "originalBytes": "2f52454c454153455f41524d36345f5438303330",
+  "replacementBytes": "2f504154434845445f41524d36345f5438303330",
+  "summary": "Mark kernel version string 0 (T8030) as patched"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "same-length RELEASE_ARM64_T8030 -> PATCHED_ARM64_T8030",
+   "exactly two occurrences in the kernelcache",
+   "SoC token read from the binary",
+   "no data moves, container layout unchanged"
+  ],
+  "id": "kernel.identity.1",
+  "offset": 259432,
+  "originalBytes": "2f52454c454153455f41524d36345f5438303330",
+  "replacementBytes": "2f504154434845445f41524d36345f5438303330",
+  "summary": "Mark kernel version string 1 (T8030) as patched"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique diagnostic phrase: Failed to find the root snapshot",
+   "unique ADRP+ADD reference to its containing C string",
+   "conditional target is uniquely closest to that xref within the 0x40-byte panic-block window"
+  ],
+  "id": "kernel.panic.root-snapshot",
+  "offset": 51809644,
+  "originalBytes": "28062837",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not enter the root-snapshot panic block"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique diagnostic phrase: root volume seal is broken",
+   "unique ADRP+ADD reference to its containing C string",
+   "conditional target is uniquely closest to that xref within the 0x40-byte panic-block window"
+  ],
+  "id": "kernel.panic.seal-broken",
+  "offset": 51205268,
+  "originalBytes": "60017037",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not enter the seal-broken panic block"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique diagnostic phrase: rootvp not authenticated after mounting",
+   "unique ADRP+ADD reference to its containing C string",
+   "conditional target is uniquely closest to that xref within the 0x40-byte panic-block window"
+  ],
+  "id": "kernel.panic.rootvp-authentication",
+  "offset": 58722684,
+  "originalBytes": "00130035",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not enter the rootvp-authentication panic block"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique diagnostic phrase: unencrypted data volume is not allowed",
+   "unique ADRP+ADD reference to its containing C string",
+   "conditional target is uniquely closest to that xref within the 0x40-byte panic-block window"
+  ],
+  "id": "kernel.panic.unencrypted-data-volume",
+  "offset": 51814816,
+  "originalBytes": "a8000037",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not enter the unencrypted-data-volume panic block"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique PACIBSP function with saved x3 out-parameter",
+   "stack result is passed to a lookup call and followed by result/out-parameter guards"
+  ],
+  "id": "kernel.amfi.trust-cache.0",
+  "offset": 33553652,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "5f2403d5",
+  "summary": "Make AMFI trust-cache lookup succeed (word 1/5)"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique PACIBSP function with saved x3 out-parameter",
+   "stack result is passed to a lookup call and followed by result/out-parameter guards"
+  ],
+  "id": "kernel.amfi.trust-cache.1",
+  "offset": 33553656,
+  "originalBytes": "ffc300d1",
+  "replacementBytes": "200080d2",
+  "summary": "Make AMFI trust-cache lookup succeed (word 2/5)"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique PACIBSP function with saved x3 out-parameter",
+   "stack result is passed to a lookup call and followed by result/out-parameter guards"
+  ],
+  "id": "kernel.amfi.trust-cache.2",
+  "offset": 33553660,
+  "originalBytes": "f44f01a9",
+  "replacementBytes": "430000b4",
+  "summary": "Make AMFI trust-cache lookup succeed (word 3/5)"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique PACIBSP function with saved x3 out-parameter",
+   "stack result is passed to a lookup call and followed by result/out-parameter guards"
+  ],
+  "id": "kernel.amfi.trust-cache.3",
+  "offset": 33553664,
+  "originalBytes": "fd7b02a9",
+  "replacementBytes": "600000f9",
+  "summary": "Make AMFI trust-cache lookup succeed (word 4/5)"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique PACIBSP function with saved x3 out-parameter",
+   "stack result is passed to a lookup call and followed by result/out-parameter guards"
+  ],
+  "id": "kernel.amfi.trust-cache.4",
+  "offset": 33553668,
+  "originalBytes": "fd830091",
+  "replacementBytes": "c0035fd6",
+  "summary": "Make AMFI trust-cache lookup succeed (word 5/5)"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "function uniquely owns the Validation Category diagnostic"
+  ],
+  "id": "kernel.amfi.launch-constraints.result",
+  "offset": 33573516,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from AMFI launch-constraint validation"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.amfi.launch-constraints.return",
+  "offset": 33573520,
+  "originalBytes": "ff0306d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return immediately after the launch-constraint result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique highest-call-count ADRP x8 leaf with optional x0 output-pointer data flow"
+  ],
+  "id": "kernel.debugger.result",
+  "offset": 62170720,
+  "originalBytes": "888bfe90",
+  "replacementBytes": "200080d2",
+  "summary": "Report that the platform permits a debugger"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired leaf-function stub"
+  ],
+  "id": "kernel.debugger.return",
+  "offset": 62170724,
+  "originalBytes": "e00000b4",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced debugger result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique shared-pointer byte accessor masked to bit zero"
+  ],
+  "id": "kernel.amfi.developer-mode.result",
+  "offset": 59304312,
+  "originalBytes": "a89efef0",
+  "replacementBytes": "20008052",
+  "summary": "Report developer mode enabled"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired accessor stub"
+  ],
+  "id": "kernel.amfi.developer-mode.return",
+  "offset": 59304316,
+  "originalBytes": "08f540f9",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced developer-mode result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "callee of the function owning the code-signature validation diagnostic",
+   "CMP W0,#imm follows a BL and is immediately consumed by B.NE",
+   "fallthrough formats a diagnostic and branches to the shared reject tail"
+  ],
+  "id": "kernel.amfi.post-validation.compare",
+  "offset": 33605708,
+  "originalBytes": "1f040071",
+  "replacementBytes": "ff070071",
+  "summary": "Force the post-validation comparison unequal so the accept branch is taken"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "within 80 bytes of the Swift Playgrounds development entitlement xref",
+   "BL is immediately followed by a conditional test of w0 and the two helpers differ"
+  ],
+  "id": "kernel.amfi.dyld-policy.0",
+  "offset": 33607096,
+  "originalBytes": "d0620094",
+  "replacementBytes": "20008052",
+  "summary": "Make dyld policy helper 1 succeed"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "within 80 bytes of the Swift Playgrounds development entitlement xref",
+   "BL is immediately followed by a conditional test of w0 and the two helpers differ"
+  ],
+  "id": "kernel.amfi.dyld-policy.1",
+  "offset": 33607108,
+  "originalBytes": "72deff97",
+  "replacementBytes": "20008052",
+  "summary": "Make dyld policy helper 2 succeed"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "LDR Wn,[persona,#8] followed by CBZ Wn",
+   "UID and GID branches share the same result-one deny block"
+  ],
+  "id": "kernel.persona.uid-zero",
+  "offset": 58964332,
+  "originalBytes": "e8000034",
+  "replacementBytes": "1f2003d5",
+  "summary": "Allow the persona UID override to be zero"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "LDR Wn,[persona,#0xc] followed by CBZ Wn",
+   "fallthrough writes result zero while the shared target writes result one"
+  ],
+  "id": "kernel.persona.gid-zero",
+  "offset": 58964340,
+  "originalBytes": "a8000034",
+  "replacementBytes": "1f2003d5",
+  "summary": "Allow the persona GID override to be zero"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique rd/rootdev/-restore boot-argument string cluster",
+   "function owns sibling rd and rootdev parser calls to the same helper",
+   "arm64e entry follows RETAB"
+  ],
+  "id": "kernel.usb.restore-mode-result",
+  "offset": 43518172,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "200080d2",
+  "summary": "Report restore mode to the USB Restricted Mode policy"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.usb.restore-mode-return",
+  "offset": 43518176,
+  "originalBytes": "ff4301d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced restore-mode result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKS start-call body"
+  ],
+  "id": "kernel.aks.start.sep-call",
+  "offset": 35560544,
+  "originalBytes": "10093fd7",
+  "replacementBytes": "1f2003d5",
+  "summary": "Skip the SEP-dependent call in AKSUserClient::start"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.0",
+  "offset": 35605868,
+  "originalBytes": "ff8306d1",
+  "replacementBytes": "3f1c0071",
+  "summary": "Selector-7 shim: CMP W1,#7 - recognize selector 7"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.1",
+  "offset": 35605872,
+  "originalBytes": "fc6f14a9",
+  "replacementBytes": "c1010054",
+  "summary": "Selector-7 shim: B.NE success - other selectors keep the existing success path"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.2",
+  "offset": 35605876,
+  "originalBytes": "fa6715a9",
+  "replacementBytes": "e20100b4",
+  "summary": "Selector-7 shim: CBZ X2,badArgument - reject a null arguments pointer"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.3",
+  "offset": 35605880,
+  "originalBytes": "f85f16a9",
+  "replacementBytes": "481040f9",
+  "summary": "Selector-7 shim: LDR X8,[X2,#0x20] - load scalarInput"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.4",
+  "offset": 35605884,
+  "originalBytes": "f65717a9",
+  "replacementBytes": "a80100b4",
+  "summary": "Selector-7 shim: CBZ X8,badArgument - reject a null scalarInput"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.5",
+  "offset": 35605888,
+  "originalBytes": "f44f18a9",
+  "replacementBytes": "482840b9",
+  "summary": "Selector-7 shim: LDR W8,[X2,#0x28] - load scalarInputCount"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.6",
+  "offset": 35605892,
+  "originalBytes": "fd7b19a9",
+  "replacementBytes": "1f050071",
+  "summary": "Selector-7 shim: CMP W8,#1 - require one scalar input"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.7",
+  "offset": 35605896,
+  "originalBytes": "fd430691",
+  "replacementBytes": "41010054",
+  "summary": "Selector-7 shim: B.NE badArgument - reject an input-count mismatch"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.8",
+  "offset": 35605900,
+  "originalBytes": "f50302aa",
+  "replacementBytes": "492440f9",
+  "summary": "Selector-7 shim: LDR X9,[X2,#0x48] - load scalarOutput"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.9",
+  "offset": 35605904,
+  "originalBytes": "f40301aa",
+  "replacementBytes": "090100b4",
+  "summary": "Selector-7 shim: CBZ X9,badArgument - reject a null scalarOutput"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.10",
+  "offset": 35605908,
+  "originalBytes": "f60300aa",
+  "replacementBytes": "485040b9",
+  "summary": "Selector-7 shim: LDR W8,[X2,#0x50] - load scalarOutputCount"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.11",
+  "offset": 35605912,
+  "originalBytes": "b70302d1",
+  "replacementBytes": "1f050071",
+  "summary": "Selector-7 shim: CMP W8,#1 - require one scalar output"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.12",
+  "offset": 35605916,
+  "originalBytes": "c869ffb0",
+  "replacementBytes": "a1000054",
+  "summary": "Selector-7 shim: B.NE badArgument - reject an output-count mismatch"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.13",
+  "offset": 35605920,
+  "originalBytes": "086544f9",
+  "replacementBytes": "c80080d2",
+  "summary": "Selector-7 shim: MOV X8,#6 - synthesize noPin plus beenUnlocked"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.14",
+  "offset": 35605924,
+  "originalBytes": "080140f9",
+  "replacementBytes": "280100f9",
+  "summary": "Selector-7 shim: STR X8,[X9] - write the synthesized scalar output"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.15",
+  "offset": 35605928,
+  "originalBytes": "a88319f8",
+  "replacementBytes": "000080d2",
+  "summary": "Selector-7 shim: MOV X0,#0 - return KERN_SUCCESS"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.16",
+  "offset": 35605932,
+  "originalBytes": "b8168052",
+  "replacementBytes": "ff0f5fd6",
+  "summary": "Selector-7 shim: RETAB - authenticated return from the success path"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.17",
+  "offset": 35605936,
+  "originalBytes": "1845b072",
+  "replacementBytes": "40588052",
+  "summary": "Selector-7 shim: MOV W0,#0x2c2 - low half of kIOReturnBadArgument"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.18",
+  "offset": 35605940,
+  "originalBytes": "ff3f0239",
+  "replacementBytes": "0000bc72",
+  "summary": "Selector-7 shim: MOVK W0,#0xe000,LSL#16 - finish kIOReturnBadArgument"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked AKSUserClient::externalMethod prologue",
+   "IOExternalMethodArguments LP64 offsets validated by the native selector-7 path",
+   "entry PACIBSP is deliberately preserved"
+  ],
+  "id": "kernel.aks.external-method.selector7.19",
+  "offset": 35605944,
+  "originalBytes": "d969ffb0",
+  "replacementBytes": "ff0f5fd6",
+  "summary": "Selector-7 shim: RETAB - authenticated return from the rejection path"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked IOLog call sequence in the AKS external method"
+  ],
+  "id": "kernel.aks.external-method.log-call",
+  "offset": 35606432,
+  "originalBytes": "67990094",
+  "replacementBytes": "1f2003d5",
+  "summary": "Silence the now-unreachable externalMethod IOLog call"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "semantic SEP function entry resolved without a target offset"
+  ],
+  "id": "kernel.sep.panic-check.result",
+  "offset": 35917184,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "000080d2",
+  "summary": "Return success from sepPanicCheck"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.sep.panic-check.return",
+  "offset": 35917188,
+  "originalBytes": "f44fbea9",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced SEP result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "semantic SEP function entry resolved without a target offset"
+  ],
+  "id": "kernel.sep.did-timeout.result",
+  "offset": 35903032,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "000080d2",
+  "summary": "Report that the SEP command did not time out"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.sep.did-timeout.return",
+  "offset": 35903036,
+  "originalBytes": "ffc300d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced SEP result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "semantic SEP function entry resolved without a target offset"
+  ],
+  "id": "kernel.sep.power-notification.result",
+  "offset": 35905488,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "000080d2",
+  "summary": "Return success from the paging-off notification handler"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.sep.power-notification.return",
+  "offset": 35905492,
+  "originalBytes": "ff0301d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced SEP result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked local failure-path sequence"
+  ],
+  "id": "kernel.sep.set-power-a",
+  "offset": 35920972,
+  "originalBytes": "e01100b4",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not enter the first setPowerState SEP failure path"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked local failure-path sequence"
+  ],
+  "id": "kernel.sep.notify-active",
+  "offset": 35916756,
+  "originalBytes": "200d00b4",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not enter the notifyOSActiveGated SEP failure path"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked local failure-path sequence"
+  ],
+  "id": "kernel.sep.set-power-b",
+  "offset": 35921020,
+  "originalBytes": "801000b4",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not enter the second setPowerState SEP failure path"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked local failure-path sequence"
+  ],
+  "id": "kernel.sep.prng-reseed",
+  "offset": 35922432,
+  "originalBytes": "80010054",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not enter the PRNG reseed failure path"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.sepmanagermatchedthreadcallhandler.result",
+  "offset": 35403332,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from sepManagerMatchedThreadCallHandler"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.sepmanagermatchedthreadcallhandler.return",
+  "offset": 35403336,
+  "originalBytes": "ff0301d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.callplatformfunction.result",
+  "offset": 35405096,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from callPlatformFunction"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.callplatformfunction.return",
+  "offset": 35405100,
+  "originalBytes": "ff8301d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.cmdcontextv2.result",
+  "offset": 35405232,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from cmdContextV2"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.cmdcontextv2.return",
+  "offset": 35405236,
+  "originalBytes": "ff8301d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.cmdcontextv3.result",
+  "offset": 35405372,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from cmdContextV3"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.cmdcontextv3.return",
+  "offset": 35405376,
+  "originalBytes": "ff8302d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.performcommandgated.result",
+  "offset": 35406292,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from performCommandGated"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.performcommandgated.return",
+  "offset": 35406296,
+  "originalBytes": "ff4305d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.performkernelcontrol.result",
+  "offset": 35409092,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from _performKernelControl"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.performkernelcontrol.return",
+  "offset": 35409096,
+  "originalBytes": "ff4302d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.performcommand.result",
+  "offset": 35410052,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from _performCommand"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.performcommand.return",
+  "offset": 35410056,
+  "originalBytes": "ffc302d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.processscrdresponsepayload.result",
+  "offset": 35410608,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from processSCRDResponsePayload"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.processscrdresponsepayload.return",
+  "offset": 35410612,
+  "originalBytes": "ff8301d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.scheduledblclickdeferredack.result",
+  "offset": 35411168,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from scheduleDblClickDeferredAck"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.scheduledblclickdeferredack.return",
+  "offset": 35411172,
+  "originalBytes": "ff4301d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "neighbor-bounded 32-word similarity",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.updateanalytics.result",
+  "offset": 35411460,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from updateAnalytics"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.updateanalytics.return",
+  "offset": 35411464,
+  "originalBytes": "ff8301d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.performscrdinitialization.result",
+  "offset": 35411820,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from performSCRDInitialization"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.performscrdinitialization.return",
+  "offset": 35411824,
+  "originalBytes": "ff0302d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.sendsepcommand.result",
+  "offset": 35412532,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from sendSEPCommand"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.sendsepcommand.return",
+  "offset": 35412536,
+  "originalBytes": "ff4304d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.setpropertiesgated.result",
+  "offset": 35415216,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from _setPropertiesGated"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.setpropertiesgated.return",
+  "offset": 35415220,
+  "originalBytes": "ff0302d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.performdoubleclickquerygated.result",
+  "offset": 35416380,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from performDoubleClickQueryGated"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.performdoubleclickquerygated.return",
+  "offset": 35416384,
+  "originalBytes": "ff4301d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.performlogginglevelquerygated.result",
+  "offset": 35416620,
+  "originalBytes": "5f2403d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from performLoggingLevelQueryGated"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.performlogginglevelquerygated.return",
+  "offset": 35416624,
+  "originalBytes": "c10000b4",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.lockitem.result",
+  "offset": 35417704,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from lockItem"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.lockitem.return",
+  "offset": 35417708,
+  "originalBytes": "ffc301d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "neighbor-bounded 32-word similarity",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.unlockitem.result",
+  "offset": 35418264,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from unlockItem"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.unlockitem.return",
+  "offset": 35418268,
+  "originalBytes": "ff8301d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.handlesepmessage.result",
+  "offset": 35419484,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from handleSEPMessage"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.handlesepmessage.return",
+  "offset": 35419488,
+  "originalBytes": "ff0302d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.readfromsepbuffer.result",
+  "offset": 35420232,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from readFromSEPBuffer"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.readfromsepbuffer.return",
+  "offset": 35420236,
+  "originalBytes": "ff8301d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.writetosepbuffer.result",
+  "offset": 35420588,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from writeToSEPBuffer"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.writetosepbuffer.return",
+  "offset": 35420592,
+  "originalBytes": "ff4302d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.sendsepmessage.result",
+  "offset": 35421528,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from sendSEPMessage"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.sendsepmessage.return",
+  "offset": 35421532,
+  "originalBytes": "ff4302d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.clearsepbuffer.result",
+  "offset": 35422100,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from clearSEPBuffer"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.clearsepbuffer.return",
+  "offset": 35422104,
+  "originalBytes": "ff8301d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.getsependpoint.result",
+  "offset": 35422516,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from getSEPEndpoint"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.getsependpoint.return",
+  "offset": 35422520,
+  "originalBytes": "ff4302d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.poweroffactiongated.result",
+  "offset": 35425664,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from powerOffActionGated"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.poweroffactiongated.return",
+  "offset": 35425668,
+  "originalBytes": "ff0302d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.sepmanagermatchedgated.result",
+  "offset": 35426360,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from sepManagerMatchedGated"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.sepmanagermatchedgated.return",
+  "offset": 35426364,
+  "originalBytes": "ff0302d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "unique relocation-masked function body",
+   "genuine PACIBSP or BTI C function entry",
+   "unregistered kernel: signature family ios272-24B119-acm-v1 (nearest match, from 27.2)"
+  ],
+  "id": "kernel.credential-manager.setpowerstategated.result",
+  "offset": 35476700,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "00008052",
+  "summary": "Return success from setPowerStateGated"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.credential-manager.setpowerstategated.return",
+  "offset": 35476704,
+  "originalBytes": "ffc301d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced AppleCredentialManager result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "mac_policy_conf -> mpc_ops[258]",
+   "mpc_ops[36] target"
+  ],
+  "id": "kernel.sandbox.vnode-check-exec.target",
+  "offset": 18182768,
+  "originalBytes": "ec9e0a03",
+  "replacementBytes": "d4dd0903",
+  "summary": "Retarget vnode_check_exec to the existing allow stub"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "native target read from its mpc_ops slot"
+  ],
+  "id": "kernel.sandbox.file-check-mmap.result",
+  "offset": 50978264,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "000080d2",
+  "summary": "Return success from file_check_mmap"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.sandbox.file-check-mmap.return",
+  "offset": 50978268,
+  "originalBytes": "fc6fbda9",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced Seatbelt result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "native target read from its mpc_ops slot"
+  ],
+  "id": "kernel.sandbox.mount-check-mount.result",
+  "offset": 50969668,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "000080d2",
+  "summary": "Return success from mount_check_mount"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.sandbox.mount-check-mount.return",
+  "offset": 50969672,
+  "originalBytes": "fc6fbda9",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced Seatbelt result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "native target read from its mpc_ops slot"
+  ],
+  "id": "kernel.sandbox.mount-check-remount.result",
+  "offset": 50969204,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "000080d2",
+  "summary": "Return success from mount_check_remount"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.sandbox.mount-check-remount.return",
+  "offset": 50969208,
+  "originalBytes": "f85fbca9",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced Seatbelt result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "native target read from its mpc_ops slot"
+  ],
+  "id": "kernel.sandbox.mount-check-unmount.result",
+  "offset": 50968304,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "000080d2",
+  "summary": "Return success from mount_check_umount"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.sandbox.mount-check-unmount.return",
+  "offset": 50968308,
+  "originalBytes": "fc6fbca9",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced Seatbelt result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "native target read from its mpc_ops slot"
+  ],
+  "id": "kernel.sandbox.vnode-check-rename.result",
+  "offset": 50947812,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "000080d2",
+  "summary": "Return success from vnode_check_rename"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "paired entry-point stub"
+  ],
+  "id": "kernel.sandbox.vnode-check-rename.return",
+  "offset": 50947816,
+  "originalBytes": "e923ba6d",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return the forced Seatbelt result"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "selector 8 returns kIOReturnBusy while a stale callback owner from a previous enumeration is retained",
+   "the retained owner is inactive while the replacement registers on the provider command gate"
+  ],
+  "id": "kernel.valeria.class-command-registration.inactive-owner-check",
+  "offset": 47712912,
+  "originalBytes": "686a40f9",
+  "replacementBytes": "9d723894",
+  "summary": "Reclaim only an inactive Valeria callback owner before selector-8 registration"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "reserved executable padding after the scoped Sandbox shim",
+   "the shim runs inside the stock selector-8 command-gate action"
+  ],
+  "id": "kernel.valeria.registration-shim.0",
+  "offset": 62510340,
+  "originalBytes": "00000000",
+  "replacementBytes": "5f2403d5",
+  "summary": "Valeria inactive-owner registration shim: BTI C - indirect-call landing pad"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "reserved executable padding after the scoped Sandbox shim",
+   "the shim runs inside the stock selector-8 command-gate action"
+  ],
+  "id": "kernel.valeria.registration-shim.1",
+  "offset": 62510344,
+  "originalBytes": "00000000",
+  "replacementBytes": "7f2303d5",
+  "summary": "Valeria inactive-owner registration shim: PACIBSP - sign LR before making nested calls"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "reserved executable padding after the scoped Sandbox shim",
+   "the shim runs inside the stock selector-8 command-gate action"
+  ],
+  "id": "kernel.valeria.registration-shim.2",
+  "offset": 62510348,
+  "originalBytes": "00000000",
+  "replacementBytes": "f57bbfa9",
+  "summary": "Valeria inactive-owner registration shim: STP X21,LR,[SP,#-0x10]! - preserve client and signed return"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "reserved executable padding after the scoped Sandbox shim",
+   "the shim runs inside the stock selector-8 command-gate action"
+  ],
+  "id": "kernel.valeria.registration-shim.3",
+  "offset": 62510352,
+  "originalBytes": "00000000",
+  "replacementBytes": "f50301aa",
+  "summary": "Valeria inactive-owner registration shim: MOV X21,X1 - retain the replacement user client"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "reserved executable padding after the scoped Sandbox shim",
+   "the shim runs inside the stock selector-8 command-gate action"
+  ],
+  "id": "kernel.valeria.registration-shim.4",
+  "offset": 62510356,
+  "originalBytes": "00000000",
+  "replacementBytes": "686a40f9",
+  "summary": "Valeria inactive-owner registration shim: LDR X8,[X19,#0xd0] - reproduce the displaced owner load"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "reserved executable padding after the scoped Sandbox shim",
+   "the shim runs inside the stock selector-8 command-gate action"
+  ],
+  "id": "kernel.valeria.registration-shim.5",
+  "offset": 62510360,
+  "originalBytes": "00000000",
+  "replacementBytes": "c80000b4",
+  "summary": "Valeria inactive-owner registration shim: CBZ X8,restore - preserve the stock null-owner path"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "reserved executable padding after the scoped Sandbox shim",
+   "the shim runs inside the stock selector-8 command-gate action"
+  ],
+  "id": "kernel.valeria.registration-shim.6",
+  "offset": 62510364,
+  "originalBytes": "00000000",
+  "replacementBytes": "094940b9",
+  "summary": "Valeria inactive-owner registration shim: LDR W9,[X8,#0x48] - read the exact IOService state word"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "reserved executable padding after the scoped Sandbox shim",
+   "the shim runs inside the stock selector-8 command-gate action"
+  ],
+  "id": "kernel.valeria.registration-shim.7",
+  "offset": 62510368,
+  "originalBytes": "00000000",
+  "replacementBytes": "89000036",
+  "summary": "Valeria inactive-owner registration shim: TBZ W9,#0,restore - keep a live owner busy"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "reserved executable padding after the scoped Sandbox shim",
+   "the shim runs inside the stock selector-8 command-gate action"
+  ],
+  "id": "kernel.valeria.registration-shim.8",
+  "offset": 62510372,
+  "originalBytes": "00000000",
+  "replacementBytes": "e00313aa",
+  "summary": "Valeria inactive-owner registration shim: MOV X0,X19 - pass the provider to direct clear"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "reserved executable padding after the scoped Sandbox shim",
+   "the shim runs inside the stock selector-8 command-gate action"
+  ],
+  "id": "kernel.valeria.registration-shim.9",
+  "offset": 62510376,
+  "originalBytes": "00000000",
+  "replacementBytes": "be8dc797",
+  "summary": "Valeria inactive-owner registration shim: BL direct-clear - release and zero the inactive owner"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "reserved executable padding after the scoped Sandbox shim",
+   "the shim runs inside the stock selector-8 command-gate action"
+  ],
+  "id": "kernel.valeria.registration-shim.10",
+  "offset": 62510380,
+  "originalBytes": "00000000",
+  "replacementBytes": "e8031faa",
+  "summary": "Valeria inactive-owner registration shim: MOV X8,XZR - enter the stock registration branch"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "reserved executable padding after the scoped Sandbox shim",
+   "the shim runs inside the stock selector-8 command-gate action"
+  ],
+  "id": "kernel.valeria.registration-shim.11",
+  "offset": 62510384,
+  "originalBytes": "00000000",
+  "replacementBytes": "e10315aa",
+  "summary": "Valeria inactive-owner registration shim: MOV X1,X21 - restore the replacement user client"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "reserved executable padding after the scoped Sandbox shim",
+   "the shim runs inside the stock selector-8 command-gate action"
+  ],
+  "id": "kernel.valeria.registration-shim.12",
+  "offset": 62510388,
+  "originalBytes": "00000000",
+  "replacementBytes": "f57bc1a8",
+  "summary": "Valeria inactive-owner registration shim: LDP X21,LR,[SP],#0x10 - restore state and signed return"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "reserved executable padding after the scoped Sandbox shim",
+   "the shim runs inside the stock selector-8 command-gate action"
+  ],
+  "id": "kernel.valeria.registration-shim.13",
+  "offset": 62510392,
+  "originalBytes": "00000000",
+  "replacementBytes": "ff0f5fd6",
+  "summary": "Valeria inactive-owner registration shim: RETAB - authenticated return to selector-8 registration"
+ },
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "only function referencing com.apple.security.only-one-exception-port: 0x3345d8c",
+   "all 3 ADRP+LDRB loads in it read 0xc13278 (__DATA_CONST, value 1)",
+   "a load of it is tested by TBZ/TBNZ #0: one edge reaches MOV W2,#6 ; BL at 0x3346058",
+   "the other edge skips that call and turns the loaded register into KERN_DENIED (SBFX/MOV #0x35/AND W0)"
+  ],
+  "id": "kernel.exception-port.behavior-enforcement",
+  "offset": 12661368,
+  "originalBytes": "01",
+  "replacementBytes": "00",
+  "summary": "Ignore non-identity-protected exception-port registrations instead of killing the caller"
+ }
+]

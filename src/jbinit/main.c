@@ -20,6 +20,7 @@ typedef int int32_t;
 long sc(long n, long a0, long a1, long a2, long a3, long a4, long a5);
 long sc_fork(void);
 
+#define SYS_read    3
 #define SYS_write   4
 #define SYS_open    5
 #define SYS_close   6
@@ -30,6 +31,14 @@ long sc_fork(void);
 #define SYS_mkdir   136
 #define SYS_mount   167
 #define SYS_stat64  338
+
+#ifdef OS2
+#define SYSVOL_LOG "OS2System"
+#define SYSVOL_WAIT_LOG "OS2System"
+#else
+#define SYSVOL_LOG "disk1s1"
+#define SYSVOL_WAIT_LOG "/dev/disk1s1"
+#endif
 
 #define O_RDWR      2
 #define O_RDONLY    0
@@ -96,11 +105,28 @@ void jbinit_main(long *sp) {
     say("open ramdisk /jbin", jbin);
 
     /* 2. stock System volume -> "/" (read-only, union over the ramdisk) */
+#ifdef OS2
+    /* 2nd iOS (built with -DOS2 -> payload/boot/dyld-os2): its own System volume OS2System, named by
+       /jbin/os2-system ("diskNsM", written by mk_osbjb.py from what os2vol reported). No fallback to the stock
+       System volume: that is a different iOS build. */
+    static char sysbuf[64] = "/dev/";
+    {
+        long fd = sc(SYS_open, (long)"/jbin/os2-system", O_RDONLY, 0, 0, 0, 0);
+        long n = fd >= 0 ? sc(SYS_read, fd, (long)(sysbuf + 5), sizeof(sysbuf) - 6, 0, 0, 0) : -1;
+        if (fd >= 0) sc(SYS_close, fd, 0, 0, 0, 0, 0);
+        if (n <= 0) { say("read /jbin/os2-system FAILED", n); for (;;) sleep_s(60); }
+        for (long i = 5; i < 5 + n; i++) if (sysbuf[i] == '\n' || sysbuf[i] == ' ') { sysbuf[i] = 0; break; }
+        sysbuf[5 + n] = 0;
+        out("[jbinit] 2nd iOS System volume: "); out(sysbuf); out("\n");
+    }
+    const char *sysdev = sysbuf;
+#else
     const char *sysdev = "/dev/disk1s1";
+#endif
     for (int i = 0; ; i++) {
         r = sc(SYS_stat64, (long)sysdev, (long)statbuf, 0, 0, 0, 0);
         if (r == 0) break;
-        if (i % 5 == 0) say("waiting for /dev/disk1s1", r);
+        if (i % 5 == 0) say("waiting for " SYSVOL_WAIT_LOG, r);
         sleep_s(1);
     }
     struct apfs_mount_args a;
@@ -112,13 +138,20 @@ void jbinit_main(long *sp) {
         /* even attempts: live fs of the sealed System volume; odd: its default (root) snapshot */
         a.mount_mode = (i & 1) ? APFS_MOUNT_AS_ROOT : APFS_MOUNT_FILESYSTEM;
         r = sc(SYS_mount, (long)"apfs", (long)"/", MNT_RDONLY | MNT_UNION, (long)&a, 0, 0);
-        say((i & 1) ? "mount apfs disk1s1 (root snapshot) on / ro,union" : "mount apfs disk1s1 (livefs) on / ro,union", r);
+        say((i & 1) ? "mount apfs " SYSVOL_LOG " (root snapshot) on / ro,union" : "mount apfs " SYSVOL_LOG " (livefs) on / ro,union", r);
         if (r == 0) break;
         sleep_s(2);
         if (i > 30) { out("[jbinit] giving up\n"); for (;;) sleep_s(60); }
     }
     r = sc(SYS_stat64, (long)"/System/Library/CoreServices/SystemVersion.plist", (long)statbuf, 0, 0, 0, 0);
     say("stat SystemVersion.plist", r);
+#ifdef OS2
+    /* the staging step (dualboot.py os2 install) leaves /.dualboot-os2 on OS2System: anything else mounted here
+       would be the wrong volume -> stop before launchd runs from it */
+    r = sc(SYS_stat64, (long)"/.dualboot-os2", (long)statbuf, 0, 0, 0, 0);
+    say("stat /.dualboot-os2 (2nd iOS marker)", r);
+    if (r != 0) { out("[jbinit] not the 2nd iOS System volume - stopping\n"); for (;;) sleep_s(60); }
+#endif
 
     /* 3. devfs on the new /dev */
     r = sc(SYS_mount, (long)"devfs", (long)"/dev", 0, (long)"devfs", 0, 0);

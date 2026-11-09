@@ -45,7 +45,8 @@ def main():
         print(f"{name}: + entitlements {sorted(extra)}")
     ident = [l.split('=', 1)[1] for l in sh('codesign', '-dvvv', stock).splitlines() if l.startswith('Identifier=')][0]
     sh('ldid', f'-S{ents}', f'-I{ident}', out)
-    cd = [l.split('=', 1)[1] for l in sh('codesign', '-dvvv', out).splitlines() if l.startswith('CDHash=')][0]
+    cd = [l.split('=', 1)[1] for l in sh('codesign', '-dvvv', *osbcfg.arm64e_arch(out), out).splitlines()
+          if l.startswith('CDHash=')][0]
     # job plist from the launchd cache
     cache = plistlib.load(open(os.path.join(ROOTFS, 'System/Library/xpc/launchd.plist'), 'rb'))
     jobs = [(k, j) for k, j in cache['LaunchDaemons'].items()

@@ -25,7 +25,7 @@ def sh(*a):
     return r.stdout + r.stderr
 
 def cdhash(path):
-    for l in sh('codesign', '-dvvv', path).splitlines():
+    for l in sh('codesign', '-dvvv', *osbcfg.arm64e_arch(path), path).splitlines():
         if l.startswith('CDHash='):
             return bytes.fromhex(l.split('=', 1)[1])
     sys.exit(f"no CDHash for {path}")

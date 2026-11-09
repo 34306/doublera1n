@@ -1,0 +1,15 @@
+[
+ {
+  "component": "kernelcache",
+  "evidence": [
+   "tbz w*, #3 followed by mov w*, #0 (cs_violation = FALSE)",
+   "nearest preceding tbz w16-31, #2 branches to it",
+   "unique match in executable kernel segments"
+  ],
+  "id": "kernel.codesign.vm-fault-cs-bypass",
+  "offset": 54510584,
+  "originalBytes": "6d001836",
+  "replacementBytes": "1f2003d5",
+  "summary": "Always take the cs_bypass branch in vm_fault_enter"
+ }
+]

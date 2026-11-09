@@ -29,7 +29,9 @@ TICKET_PATH = osbcfg.TICKET
 TICKET = IM4M(open(TICKET_PATH, 'rb').read())
 PASSTHROUGH = ['ANE', 'AOP', 'AVE', 'SPTM', 'GFX', 'ISP', 'PMP', 'SIO', 'WCH']
 import dt_patch
-DT_OPS = dt_patch.OSB_OPS      # shared with lib/precheck.py
+# shared with lib/precheck.py; the 2nd iOS (OSB_OS2=1, developing feature) points system-vol/data-vol at
+# OS2System/OS2Data by their APFS roles instead
+DT_OPS = dt_patch.OS2_OPS if osbcfg.OS2 else dt_patch.OSB_OPS
 
 def sign(p, out):
     open(os.path.join(OUT, out), 'wb').write(IMG4(im4p=p, im4m=TICKET).output())

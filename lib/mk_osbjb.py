@@ -9,7 +9,18 @@
   * iBEC boot-args "jb=md0 ..." (XNU and APFS container_rootmount parse 'jb' after the two rename patches;
     other kexts and launchd - which only looks for the literal "rd=md0" - see a normal boot)
   * rtsc trust cache = System static TC (v2) + cdhashes of the ramdisk binaries and cache-override daemons
-Everything signed with the installed APTicket (mk_osb.TICKET). Nothing is written to the device here."""
+Everything signed with the installed APTicket (mk_osb.TICKET). Nothing is written to the device here.
+
+2nd iOS (OSB_OS2=1, DEVELOPING FEATURE - not device-tested yet): the same set for another iOS 27.x build that lives on
+its own volumes (OS2System + OS2Data, see src/os2vol.c and dualboot.py os2):
+  * ramdisk /usr/lib/dyld = payload/boot/dyld-os2 (jbinit mounting OS2System), /jbin/os2-system = its BSD name
+  * shared cache: dyld's libignition still grafts the STOCK OS cryptex (Preboot:/cryptex1/current, a different
+    build) on Preboot:/Cryptexes/OS, but it takes the dylib root from the canonical directory System/Cryptexes/OS
+    of the root filesystem, and on OS2System that symlink points at this build's cryptex content, staged as plain
+    files in Preboot:/Cryptexes/ob/os2/<build>/OS (the kernel only maps a shared cache from the root or the Preboot
+    volume). /System/Library/Caches/com.apple.dyld -> the same directory covers dyld's own fallback search
+    (it looks there before /private/preboot/Cryptexes/OS). No extra boot-arg.
+  * rtsc also carries this build's OS + App cryptex trust caches (nothing loads them otherwise)"""
 import os, plistlib, shutil, struct, subprocess, sys
 from pyimg4 import IM4P, IMG4, IM4PData, Compression
 
@@ -40,15 +51,16 @@ def sh(*a, **k):
     return r.stdout + r.stderr
 
 def cdhash(path):
-    for l in sh('codesign', '-dvvv', path).splitlines():
+    for l in sh('codesign', '-dvvv', *osbcfg.arm64e_arch(path), path).splitlines():
         if l.startswith('CDHash='): return bytes.fromhex(l.split('=', 1)[1])
     sys.exit(f"no CDHash for {path}")
 
 def build_binaries():
     os.makedirs(B, exist_ok=True)
     for n in PREBUILT_FILES:
-        if not os.path.exists(os.path.join(PREBUILT, n)): sys.exit(f"missing {PREBUILT}/{n} (src/build.sh rebuilds it)")
-        shutil.copy2(os.path.join(PREBUILT, n), os.path.join(B, n))
+        src = 'dyld-os2' if (n == 'dyld' and osbcfg.OS2) else n     # 2nd iOS: jbinit that mounts OS2System
+        if not os.path.exists(os.path.join(PREBUILT, src)): sys.exit(f"missing {PREBUILT}/{src} (src/build.sh rebuilds it)")
+        shutil.copy2(os.path.join(PREBUILT, src), os.path.join(B, n))
     if not os.path.exists(MOBILEACTIVATIOND): sys.exit(f"missing {MOBILEACTIVATIOND} (built from the rootfs during install)")
     shutil.copy2(MOBILEACTIVATIOND, os.path.join(B, 'mobileactivationd'))
     return {n: cdhash(os.path.join(B, n)) for n in TOOLS + ('dyld', 'launchd', 'jbloader', 'hacthook.dylib', 'obhook.dylib')}
@@ -110,6 +122,12 @@ def build_ramdisk():
     for n in TOOLS: shutil.copy2(os.path.join(B, n), os.path.join(root, 'jbin', n)); os.chmod(os.path.join(root, 'jbin', n), 0o755)
     shutil.copy2(os.path.join(B, 'bootstrap.tar.gz'), os.path.join(root, 'jbin/bootstrap.tar.gz'))
     shutil.copy2(SSHKEY + '.pub', os.path.join(root, 'jbin/authorized_keys'))
+    if osbcfg.OS2:
+        import re
+        if not re.fullmatch(r'disk\d+s\d+', osbcfg.OS2_SYSDEV or ''):
+            sys.exit(f"OSB_OS2_SYSDEV={osbcfg.OS2_SYSDEV!r}: expected OS2System's BSD name (diskNsM)")
+        open(os.path.join(root, 'jbin/os2-system'), 'w').write(osbcfg.OS2_SYSDEV + '\n')
+        print(f"  2nd iOS          jbinit mounts /dev/{osbcfg.OS2_SYSDEV} (OS2System)")
     for p in ('usr/lib/dyld', 'sbin/launchd', 'jbin/jbloader'): os.chmod(os.path.join(root, p), 0o755)
     global CACHE_BINS
     _, CACHE_BINS = build_cache(root)
@@ -136,6 +154,16 @@ def main():
     tc = IM4P(open(osbcfg.ipsw('StaticTrustCache'), 'rb').read()).payload.output().data
     ver, = struct.unpack_from('<I', tc, 0); n, = struct.unpack_from('<I', tc, 20); assert ver == 2 and len(tc) == 24 + 24 * n
     ents = [tc[24 + 24 * i:24 + 24 * (i + 1)] for i in range(n)]
+    if osbcfg.OS2:              # 2nd iOS: its OS + App cryptex binaries (dyld shared cache, cryptex daemons)
+        for key in ('Cryptex1,SystemTrustCache', 'Cryptex1,AppTrustCache'):
+            if not osbcfg.has(key):
+                print(f"  !! no {key} in this build - skipped"); continue
+            ctc = IM4P(open(osbcfg.ipsw(key), 'rb').read()).payload.output().data
+            cv, = struct.unpack_from('<I', ctc, 0); cn, = struct.unpack_from('<I', ctc, 20)
+            assert cv == 2 and len(ctc) == 24 + 24 * cn, f"{key}: unexpected trust cache format"
+            add = [ctc[24 + 24 * i:24 + 24 * (i + 1)] for i in range(cn)]
+            ents += [e for e in add if e not in ents]
+            print(f"  rtsc + {key}: {cn} entries")
     for h in hashes.values():
         e = h + bytes([2, 0, 0, 0])
         if e not in ents: ents.append(e)

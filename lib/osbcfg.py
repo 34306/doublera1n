@@ -24,6 +24,22 @@ PROFILE = os.environ.get('OSB_PROFILE') or ''
 BOARD = os.environ.get('OSB_BOARD') or 'd421ap'
 TICKET = os.environ.get('OSB_TICKET') or os.path.join(OUT, 'apticket.installed.der')
 ROOTFS = os.environ.get('OSB_ROOTFS') or os.path.join(os.path.dirname(WORK), 'rootfs')
+# 2nd iOS (developing feature): build the OS B artifacts for its own System volume (OS2System) and Data volume
+# (OS2Data) instead of the stock System + DataB. OS2_SYSDEV is OS2System's BSD name as os2vol reported it.
+OS2 = os.environ.get('OSB_OS2') == '1'
+OS2_SYSDEV = os.environ.get('OSB_OS2_SYSDEV', '')
+
+def arm64e_arch(path):
+    """['--arch', 'arm64e'] for a fat binary with an arm64e slice (what the phone's arm64e processes load), else [].
+    Plain `codesign -d` reports the slice of the Mac's own CPU: arm64e on Apple Silicon, but the first slice (arm64)
+    on an Intel Mac - a trust cache built there would carry the wrong CDHash (payload/boot/obhook.dylib is fat)."""
+    import struct
+    h = open(path, 'rb').read(8 + 20 * 16)
+    if len(h) < 8 or struct.unpack_from('>I', h)[0] != 0xcafebabe:
+        return []
+    n = min(struct.unpack_from('>I', h, 4)[0], 16)
+    slices = [struct.unpack_from('>II', h, 8 + 20 * i) for i in range(n)]
+    return ['--arch', 'arm64e'] if any(ct == 0x0100000c and st & 0xffffff == 2 for ct, st in slices) else []
 
 # record files: a profile keeps everything in one directory; without one, resolver plans are read from lib/osb and
 # our own patches from patches/

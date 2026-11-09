@@ -23,6 +23,15 @@ OSB_OPS = [                                                         # OS B (mk_o
     # baseband-vol stays rw: CommCenter/BBFS need to write the modem's storage
     '--setstr', f'{FSTAB}/hardware-vol:vol.fs_type=ro',
 ]
+# 2nd iOS (developing feature): its own System + Data volumes, created by os2vol with roles nobody else looks up
+# (kernel DT_get_fstab_entries mounts the FIRST volume of the boot container with the entry's role).
+OS2_SYSTEM_ROLE = 8        # APFS VM role   -> OS2System
+OS2_DATA_ROLE = 512        # APFS Enterprise role -> OS2Data (role 2 "User" is taken by a stock volume)
+_pairs = [OSB_OPS[i:i + 2] for i in range(0, len(OSB_OPS), 2)]
+OS2_OPS = [x for op, arg in _pairs if arg != f'{FSTAB}/data-vol:vol.fs_role=0' for x in (op, arg)] + [
+    '--set', f'{FSTAB}/data-vol:vol.fs_role={OS2_DATA_ROLE}',
+    '--set', f'{FSTAB}/system-vol:vol.fs_role={OS2_SYSTEM_ROLE}',
+]
 
 def parse(d, o):
     nprops, nchild = struct.unpack_from('<II', d, o); o += 8

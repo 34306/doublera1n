@@ -21,7 +21,7 @@ FIRMWARE = [('ANE.img4', 0), ('AOP.img4', 0), ('AVE.img4', 1), ('SPTM.img4', 3),
 OPTIONAL = {'WCH.img4'}             # wireless-charging firmware: iPads have none
 if OSB: FIRMWARE = [f for f in FIRMWARE if f[0] != 'StaticTrustCache.img4']   # System TC sent as rtsc (mk_osb.py)
 
-def recovery(timeout=40):
+def recovery(timeout=40, hint=''):
     """a Recovery device whose string descriptors answer (a half-torn-down one after `go` does not)"""
     end = time.time() + timeout
     while time.time() < end:
@@ -33,7 +33,7 @@ def recovery(timeout=40):
                 pass
             usb.util.dispose_resources(d)
         time.sleep(0.5)
-    sys.exit("!! no (healthy) Recovery device")
+    sys.exit("!! no (healthy) Recovery device" + (f"\n   {hint}" if hint else ""))
 
 def gone(timeout=15):
     end = time.time() + timeout
@@ -75,8 +75,12 @@ def main():
         return stages_from_firmware()
     if 'PWND: usbliter8' not in out: sys.exit("device not in pwned DFU")
     print("[1] iBSS (raw)", flush=True)
-    subprocess.run(['python3', CTL, 'boot', os.path.join(C, 'iBSS.raw')], capture_output=True)
-    recovery(); time.sleep(3)
+    # this interpreter (.venv), not `python3` from PATH: setup.sh installs pyusb only into .venv, and a PATH
+    # python3 without it dies on `import usb` before sending anything
+    r = subprocess.run([sys.executable, CTL, 'boot', os.path.join(C, 'iBSS.raw')], capture_output=True, text=True)
+    # its last request may fail while iBSS takes USB over: shown only if no Recovery device follows
+    recovery(hint=f"usbliter8ctl exit {r.returncode}: {(r.stderr or r.stdout).strip()[-400:]}" if r.returncode else '')
+    time.sleep(3)
     print("[2] iBEC + go", flush=True)
     upload('iBEC.img4')
     # `irecovery -c go` (libirecovery ignores the status-stage timeout of the

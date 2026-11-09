@@ -117,7 +117,7 @@ choose_version() {
     elif [ "$i" -eq "$n" ]; then run_cmd select --auto
     elif [ "$i" -eq $((n + 1)) ]; then
         header; read -rp "  Path to the .ipsw: " p
-        [ -n "$p" ] && run_cmd select --ipsw "${p/#\~/$HOME}" --prepare
+        [ -n "$p" ] && run_cmd select --ipsw "${p/#\~/$HOME}"
     fi
 }
 
@@ -187,6 +187,43 @@ run_cmd() {   # run_cmd <dualboot.py args>; no args = Start (auto: install the f
     pause
 }
 
+# 2nd iOS: another iOS 27.x on its own volumes (OS2System + OS2Data). DEVELOPING FEATURE - not device-tested yet.
+os2_menu() {
+    menu "Dualboot: 2nd iOS  [developing feature - not device-tested yet]" \
+        "Install a 2nd iOS        (2nd Data must be running; ~22 GB on the phone)" \
+        "Boot the 2nd iOS         (pwned DFU)" \
+        "Re-apply fixes           (2nd iOS running)" \
+        "Remove the 2nd iOS       (2nd Data must be running)" \
+        "Status" \
+        "Back"
+    case $MENU_INDEX in
+        0) os2_choose_build ;;
+        1) run_cmd os2 boot ;;
+        2) run_cmd os2 provision ;;
+        3) if confirm "REMOVE the 2nd iOS? OS2System + OS2Data are deleted. Stock iOS and 2nd Data are kept."; then
+               run_cmd os2 remove; fi ;;
+        4) header; "$PY" dualboot.py os2 status; pause ;;
+    esac
+}
+
+os2_choose_build() {
+    header; echo "  ${C_DIM}fetching the version list ...${C_RESET}"
+    local -a builds labels
+    local line
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        builds+=("${line%%|*}"); labels+=("${line##*|}")
+    done < <("$PY" dualboot.py versions --plain 2>/dev/null)
+    labels+=("From an IPSW file ..." "Back")
+    menu "Which iOS for the 2nd iOS? (any iOS 27.x; it gets its own System + Data volumes)" "${labels[@]}"
+    local i=$MENU_INDEX n=${#builds[@]}
+    if [ "$i" -lt "$n" ]; then run_cmd os2 install --build "${builds[$i]}"
+    elif [ "$i" -eq "$n" ]; then
+        header; read -rp "  Path to the .ipsw: " p
+        [ -n "$p" ] && run_cmd os2 install --ipsw "${p/#\~/$HOME}"
+    fi
+}
+
 more_menu() {
     menu "More" \
         "Select iOS version        (Start reads it from the iPhone)" \
@@ -206,6 +243,7 @@ while true; do
         "SSH into 2nd Data" \
         "Re-apply fixes            (2nd Data running)" \
         "Remove 2nd Data           (deletes DataB, back to stock only)" \
+        "Dualboot: 2nd iOS ...     [developing] another iOS 27.x on its own volumes" \
         "More ..." \
         "Quit"
     case $MENU_INDEX in
@@ -214,7 +252,8 @@ while true; do
         2) run_cmd provision ;;
         3) if confirm "REMOVE 2nd Data? Everything in DataB (apps, accounts, jailbreak) is lost. Stock iOS is kept."; then
                if confirm "Really delete DataB?"; then run_cmd remove; fi; fi ;;
-        4) more_menu ;;
-        5) clear; exit 0 ;;
+        4) os2_menu ;;
+        5) more_menu ;;
+        6) clear; exit 0 ;;
     esac
 done

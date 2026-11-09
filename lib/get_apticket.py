@@ -29,7 +29,9 @@ async def main():
     bm = plistlib.load(open(a.manifest, "rb"))
     ids = [i for i in bm["BuildIdentities"]
            if i["Info"]["DeviceClass"].lower() == a.board and i["Info"].get("RestoreBehavior") == a.behavior
-           and "Variant" in i["Info"] and "Customer" in i["Info"]["Variant"]]
+           and "Variant" in i["Info"]]
+    # release IPSWs: "Customer ..."; developer betas only carry "Developer Erase/Upgrade Install (IPSW)"
+    ids = [i for i in ids if "Customer" in i["Info"]["Variant"]] or ids
     if not ids: sys.exit("no identity")
     ident = ids[0]
     print("identity:", ident["Info"]["Variant"])

@@ -55,6 +55,13 @@ def host_check(need_ipsw=True):
             __import__(mod)
         except ImportError:
             bad.append(f"python module {mod}  ({hint})")
+    try:                                # `import usb` works without libusb; every USB call then fails
+        import usb.core
+        usb.core.find()
+    except ImportError:
+        pass
+    except Exception as e:
+        bad.append(f"pyusb cannot use libusb ({e}): brew install libusb; if it is installed: rm -rf .venv && ./setup.sh")
     if not os.path.exists(USBLITER8CTL):
         bad.append(f"usbliter8ctl at {USBLITER8CTL} (set USBLITER8CTL)")
     return bad
@@ -135,11 +142,12 @@ def find_profile(board, build):
 
 # ----------------------------------------------------------------------------------------------- workspace
 class Workspace:
-    """~/dualboot-work/<ECID>-<build>: everything device-specific (tickets, builds, ssh key, logs)."""
-    def __init__(self, ecid, profile):
+    """~/dualboot-work/<ECID>-<build>: everything device-specific (tickets, builds, ssh key, logs).
+    prefix 'os2-' = the 2nd iOS (developing feature), see dualboot.py OS2Workspace."""
+    def __init__(self, ecid, profile, prefix=''):
         self.ecid = ecid.lower().replace('0x', '').zfill(16)
         self.profile = profile
-        self.root = os.path.join(WORKROOT, f"{self.ecid}-{profile['build']}")
+        self.root = os.path.join(WORKROOT, f"{prefix}{self.ecid}-{profile['build']}")
         for d in ('out', 'build', 'build/ipsw', 'logs'):
             os.makedirs(os.path.join(self.root, d), exist_ok=True)
         self.state_file = os.path.join(self.root, 'state.json')

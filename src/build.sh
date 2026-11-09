@@ -28,6 +28,13 @@ cc "${CF[@]}" -nostdlib -ffreestanding -fno-stack-protector -fno-builtin -static
    -Wl,-dylinker -Wl,-dylinker_install_name,/usr/lib/dyld -e __dyld_start \
    "$J/start.S" "$J/main.c" -o "$BOOT/dyld"
 ldid -S "$BOOT/dyld"
+# 2nd iOS (developing feature): same jbinit, but it mounts OS2System (named by the ramdisk's /jbin/os2-system)
+# instead of the stock System volume. Built as "dyld" so its code-signing identifier matches the 2nd Data one.
+mkdir -p "$TMP/os2"
+cc "${CF[@]}" -DOS2 -nostdlib -ffreestanding -fno-stack-protector -fno-builtin -static \
+   -Wl,-dylinker -Wl,-dylinker_install_name,/usr/lib/dyld -e __dyld_start \
+   "$J/start.S" "$J/main.c" -o "$TMP/os2/dyld"
+ldid -S "$TMP/os2/dyld"; cp "$TMP/os2/dyld" "$BOOT/dyld-os2"
 # PID 1's entitlements come from the main image (the stub), so it carries launchd's set
 cc "${CF[@]}" "$J/stub.c" -o "$BOOT/launchd"
 ldid -S"$J/launchd.ents.plist" "$BOOT/launchd"
@@ -53,6 +60,10 @@ fat "$BOOT/obhook.dylib" obhook; ldid -S "$BOOT/obhook.dylib"
 # loads the container from /dev/disk1) with disk-device-access, like the stock restored_external and newfs_apfs
 cc "${CF[@]}" "$SRC/rdsetup.c" -framework CoreFoundation -framework IOKit -o "$SETUP/rdsetup"
 ldid -S"$SRC/rdsetup.ents.plist" "$SETUP/rdsetup"
+# 2nd iOS volumes (developing feature): run on 2nd Data over SSH; newfs_apfs + APFSVolumeDelete need the same
+# disk-device-access entitlement as rdsetup
+cc "${CF[@]}" "$SRC/os2vol.c" -framework CoreFoundation -framework IOKit -o "$DEV/os2vol"
+ldid -S"$SRC/os2vol.ents.plist" "$DEV/os2vol"
 
 # ---------------------------------------------------------------- DataB / Preboot (payload/device)
 systemhook() { cc -arch "$1" -miphoneos-version-min=15.0 -isysroot "$SDK" -dynamiclib -O2 -Wall \

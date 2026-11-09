@@ -23,6 +23,8 @@ cd doublera1n
 ```
 That's it. Plug the iPhone in booted into iOS (its version is read automatically), then put it into pwned DFU when it asks. The first time `boot.sh` installs 2nd Data (it asks for pwned DFU once more for the first boot), every time after it just boots 2nd Data.
 
+Updated stock iOS? Plug the iPhone in booted into the new iOS and run `./boot.sh`: 2nd Data is rebuilt for the new build and DataB (apps, data, jailbreak) is kept. *(developing feature, not device-tested yet)*
+
 On first use it runs `./setup.sh` by itself, which installs the Homebrew tools (libimobiledevice, libirecovery, ldid, libusb, ipsw) and creates `.venv` from `requirements.txt`. `.venv/` is machine-local, run `./setup.sh` again any time to repair it (if needed).
 
 Prefer a menu? `./dualboot.sh` (↑/↓ select, Enter run):
@@ -33,12 +35,30 @@ Prefer a menu? `./dualboot.sh` (↑/↓ select, Enter run):
 | SSH into 2nd Data | `ssh root@` through iproxy (pinned to the phone's UDID) |
 | Re-apply fixes | pushes every userland fix again over SSH (2nd Data running) |
 | Remove 2nd Data | deletes DataB and our files in Preboot, back to a single stock OS |
+| Dualboot: 2nd iOS | **developing feature**: another iOS 27.x on its own volumes, see below |
 | More | pick the iOS version by hand, status / check the Mac, run `setup.sh` again |
 
 > [!WARNING]
 > When setting up 2nd Data, if the iPhone asks **iPhone Partially Set Up**, choose **Continue with Partial Setup**. Do NOT choose **Erase and Start Over**.
 
 I also fixed a lot of problems such as Wifi did not auto connect when reboot, deep sleep panic the device, SEP-less panic stuff, etc. You can check patches i did in the repo as well.
+
+## Dualboot: a 2nd iOS (developing feature)
+> [!NOTE]
+> **Developing feature.** The code is in, but it has not been booted on a device yet. Expect bugs.
+
+Besides 2nd Data (stock System + DataB), you can add a second iOS 27.x build on its own volumes:
+- `OS2System`: the system files of that build, `OS2Data`: its `/private/var`
+- its cryptex content (dyld shared cache) in `Preboot:/Cryptexes/ob/os2/<build>`
+
+Stock iOS and DataB are not touched, and a normal reboot still goes to stock iOS. 2nd Data has to be installed and running (the files are copied over SSH). You need about 22 GB free on the phone and about 30 GB on the Mac (IPSW + decrypted images).
+
+```
+./dualboot.py os2 install --build <build>   # 2nd Data running
+./dualboot.py os2 boot                      # pwned DFU
+./dualboot.py os2 remove                    # 2nd Data running
+```
+"Remove 2nd Data" refuses while a 2nd iOS is installed (both use the same folder in Preboot): remove the 2nd iOS first.
 
 ## Requirements
 - A Mac (support both Apple silicon and Intel) with Homebrew. `setup.sh` installs libimobiledevice, libirecovery, ldid, libusb, [ipsw](https://github.com/blacktop/ipsw) and creates `.venv`.

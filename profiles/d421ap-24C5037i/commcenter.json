@@ -1,0 +1,44 @@
+[
+ {
+  "component": "CommCenter",
+  "evidence": [
+   "unique \"context is not assigned\" literal at 0x221252f",
+   "unique ADRP+ADD reference at 0x94f10",
+   "preceded by CMN W8,#2 and MOVN W8,#2",
+   "B.NE retargeted to its own destination 0x100094f48 unconditionally"
+  ],
+  "id": "commcenter.data-connection.context-index",
+  "offset": 610056,
+  "originalBytes": "01020054",
+  "replacementBytes": "10000014",
+  "summary": "Stop canActivateWithoutOverrides refusing before it evaluates, for want of a context index"
+ },
+ {
+  "component": "CommCenter",
+  "evidence": [
+   "unique \"ActivationStatus failed in DataSettings\" literal at 0x220685d",
+   "unique ADRP+ADD reference at 0x962f0",
+   "MOVN W8,#2 failure-block entry at 0x962e8",
+   "single TBZ W0,#0 to that block preceded by BLRAA"
+  ],
+  "id": "commcenter.data-settings.activation-status",
+  "offset": 615004,
+  "originalBytes": "60040036",
+  "replacementBytes": "1f2003d5",
+  "summary": "Stop canActivateDataSettings refusing a data context for activation status"
+ },
+ {
+  "component": "CommCenter",
+  "evidence": [
+   "unique \"activateDataSettings: can not activate with current baseband activated state\" literal at 0x20d2d56",
+   "unique ADRP+ADD reference at 0xa0ddd4",
+   "single TBZ W0,#0 branching back into that block, preceded by BLRAA",
+   "MOV X17,#0x4C0 pins it to vtable slot 1216, the same virtual as gate two"
+  ],
+  "id": "commcenter.data-settings.activate-baseband-state",
+  "offset": 10542396,
+  "originalBytes": "c0030036",
+  "replacementBytes": "1f2003d5",
+  "summary": "Stop activateDataSettings refusing the activation it was just told it could do"
+ }
+]
