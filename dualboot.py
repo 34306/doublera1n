@@ -19,10 +19,11 @@ Nothing on the stock OS is modified: a normal reboot always returns to stock iOS
                                  (OS2System + OS2Data), installed from 2nd Data and booted from pwned DFU
 """
 import argparse, glob, json, os, shutil, subprocess, sys, time
+from contextlib import closing
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(ROOT, 'lib'))
-from common import (serial_source, parse_ticket, SerialFileTail,
+from common import (serial_source, parse_ticket,
                     say, warn, die, run, ask, host_check, irec_query, wait_dfu, board_of, list_profiles,
                     find_profile, Workspace, SSH, SSH_PORT, device_udid, WORKROOT, LIB, PAYLOAD, BOARD_PRODUCTS,
                     BOARD_HELP)
@@ -505,30 +506,56 @@ def build_setup_chain(ws, mode):
 
 def setup_boot(ws, mode):
     """Boot the setup ramdisk and follow rdsetup on the UART. Returns the captured bytes."""
-    ser = serial_source(ws.p('logs', f'setup-{mode}-{time.strftime("%Y%m%d-%H%M%S")}.log'))
-    if not isinstance(ser, SerialFileTail) and not ser.available():
-        die("no serial port of the pwned-DFU board (/dev/cu.usbmodem*) - needed to read the setup result.\n"
-            "    (if another program owns the UART: DUALBOOT_SERIAL_LOG=<its log file>)")
-    say("boot setup ramdisk ...")
-    r = run(sys.executable, os.path.join(LIB, 'boot_chain.py'), env=ws.env(), check=False)
-    if r.returncode:
-        die("sending the setup chain failed - put the phone back into pwned DFU and retry")
-    done = [b'SETUP DONE', b'SETUP FAILED'] if mode == 'install' else [b'REMOVE DONE', b'REMOVE FAILED']
-    say(f"waiting for rdsetup ({'create DataB + copy data + read the APTicket' if mode == 'install' else 'delete DataB'}) "
-        "- this can take a few minutes ...")
-    last = [0.0]
-    def progress(buf):
-        if time.time() - last[0] > 30:
-            last[0] = time.time(); print("   ... ", (buf[-120:].decode('latin1').strip().splitlines() or [''])[-1][:110])
-    hit = ser.wait_for(done, timeout=1800, progress=progress)
-    if hit is None:
-        die("no rdsetup result on the UART after 30 minutes")
-    for l in ser.buf.decode('latin1').splitlines():
-        if '[rdsetup]' in l and 'TICKET' not in l and 'TKT' not in l:
-            print('    ' + l.strip()[:150])
-    if hit.endswith(b'FAILED'):
-        die("rdsetup reported an error (see above) - nothing else was changed")
-    return ser.buf
+    logpath = ws.p('logs', f'setup-{mode}-{time.strftime("%Y%m%d-%H%M%S")}.log')
+    try:
+        source = serial_source(logpath)
+    except OSError as error:
+        die(f"could not start UART capture. {error}\n"
+            "    Set OSB_SERIAL to the board's port or DUALBOOT_SERIAL_LOG to a running UART logger's file.")
+
+    with closing(source) as ser:
+        say(f"capturing UART from {ser.source} (log {ser.logpath})")
+        say("boot setup ramdisk ...")
+        with subprocess.Popen([sys.executable, os.path.join(LIB, 'boot_chain.py')], env=ws.env()) as boot:
+            try:
+                while boot.poll() is None:
+                    ser.pump(0.25)
+            finally:
+                if boot.poll() is None:
+                    boot.terminate()
+        if boot.returncode:
+            die(f"sending the setup chain failed. See UART log {ser.logpath}.")
+
+        done = [b'SETUP DONE', b'SETUP FAILED'] if mode == 'install' else [b'REMOVE DONE', b'REMOVE FAILED']
+        say(f"waiting for rdsetup ({'create DataB + copy data + read the APTicket' if mode == 'install' else 'delete DataB'}) "
+            "- this can take a few minutes ...")
+        last = time.monotonic()
+        silence_reported = False
+
+        def progress(buf):
+            nonlocal last, silence_reported
+            now = time.monotonic()
+            if now - last < 30:
+                return
+            last = now
+            if not buf and not silence_reported:
+                warn(f"no UART output from {ser.source} yet. Check the board's UART connection or external logger.")
+                silence_reported = True
+            tail = buf[-120:].decode('latin1').strip().splitlines()
+            if tail:
+                print("   ... ", tail[-1][:110])
+
+        hit = ser.wait_for(done, timeout=1800, progress=progress)
+        if hit is None:
+            if not ser.buf:
+                die(f"no UART data received from {ser.source} after 30 minutes. UART log {ser.logpath}")
+            die(f"no rdsetup result on the UART after 30 minutes ({len(ser.buf)} bytes captured). UART log {ser.logpath}")
+        for line in ser.buf.decode('latin1').splitlines():
+            if '[rdsetup]' in line and 'TICKET' not in line and 'TKT' not in line:
+                print('    ' + line.strip()[:150])
+        if hit.endswith(b'FAILED'):
+            die(f"rdsetup reported an error. See UART log {ser.logpath}.")
+        return ser.buf
 
 def cmd_install(a):
     bad = host_check()
