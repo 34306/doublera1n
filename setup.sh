@@ -19,6 +19,15 @@ step "Homebrew"
 if ! command -v brew >/dev/null 2>&1; then
     for b in /opt/homebrew/bin/brew /usr/local/bin/brew; do [ -x "$b" ] && eval "$("$b" shellenv)"; done
 fi
+# Also check if brew is in PATH from previous shellenv eval
+if ! command -v brew >/dev/null 2>&1; then
+    # Try common Homebrew locations for Intel and Apple Silicon
+    if [ -x /opt/homebrew/bin/brew ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [ -x /usr/local/bin/brew ]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
+fi
 command -v brew >/dev/null 2>&1 || fail "Homebrew is missing - install it from https://brew.sh, then run ./setup.sh again"
 
 step "Homebrew packages"
@@ -41,7 +50,8 @@ fi
 echo "   ${G}✓${N} ipsw $iv"
 
 step "Python environment (.venv)"
-PYB=$(brew --prefix)/bin/python3
+# Use brew python3 if available, otherwise system python3
+PYB=$(brew --prefix 2>/dev/null)/bin/python3
 [ -x "$PYB" ] || PYB=$(command -v python3)
 [ -d .venv ] || "$PYB" -m venv .venv || fail "could not create .venv"
 .venv/bin/python3 -m pip install -q --upgrade pip

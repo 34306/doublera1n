@@ -40,6 +40,7 @@ HOST_TOOLS = {
     'codesign': 'Xcode command line tools',
     'hdiutil': 'macOS',
     'otool': 'Xcode command line tools',
+    'python3': 'brew install python@3',
 }
 
 def host_check(need_ipsw=True):
