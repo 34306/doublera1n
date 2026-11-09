@@ -114,11 +114,16 @@ def cmd_doctor(a):
     say("Mac OK: all tools present (irecovery, iproxy, ldid, ipsw, pyimg4, pyusb, usbliter8ctl)")
 
 def cmd_ssh(a):
-    q = irec_query()
-    ecid = a.ecid or (q or {}).get('ECID')
+    import re
+
+    ecid = a.ecid if a.ecid is not None else (irec_query() or {}).get('ECID')
+    if ecid is not None and not re.fullmatch(r'(?:0x)?[0-9a-f]{1,16}', ecid, re.IGNORECASE):
+        die(f"invalid ECID {ecid!r}. Use up to 16 hexadecimal digits.")
     cands = [Workspace(d.split('/')[-1].split('-')[0], find_profile(s.get('board'), s.get('build')))
              for d, s in (workspaces_for(ecid) if ecid else []) if s.get('installed')]
     if not cands:
+        if ecid:
+            die(f"no installed 2nd Data workspace for ECID {ecid}")
         # phone is booted (not in irecovery): take the only installed workspace
         alls = [(d, json.load(open(os.path.join(d, 'state.json')))) for d in glob.glob(os.path.join(WORKROOT, '*'))
                 if os.path.exists(os.path.join(d, 'state.json')) and not os.path.basename(d).startswith(OS2_PREFIX)]
@@ -704,15 +709,20 @@ def ssh_argv(ssh):
 
 def stream_tar(ssh, src_dir, names, dest, extra_tar=()):
     """tar src_dir/names | ssh 'tar -x -C dest' (no temp files on either side)."""
+    import shlex
+
     ssh._iproxy()
     # COPYFILE_DISABLE: macOS tar would add an AppleDouble ._<name> file for every file carrying an xattr (quarantine of a
     # downloaded ZIP checkout, provenance) and the phone's tar extracts them as real files (._*.deb in pkgs/ ...)
-    tar = subprocess.Popen(['tar', *extra_tar, '-C', src_dir, '-cf', '-', *names], stdout=subprocess.PIPE,
-                           env=dict(os.environ, COPYFILE_DISABLE='1'))
-    rc = subprocess.run(ssh_argv(ssh) + ['-o', 'Compression=no', f'mkdir -p {dest} && tar -C {dest} -xpf - 2>/dev/null; echo done'],
-                        stdin=tar.stdout, capture_output=True, text=True)
-    tar.wait()
-    return rc.returncode == 0 and 'done' in rc.stdout
+    target = shlex.quote(dest)
+    with subprocess.Popen(['tar', *extra_tar, '-C', src_dir, '-cf', '-', *names], stdout=subprocess.PIPE,
+                          env=dict(os.environ, COPYFILE_DISABLE='1')) as tar:
+        rc = subprocess.run(ssh_argv(ssh) + ['-o', 'Compression=no', f'mkdir -p {target} && tar -C {target} -xpf -'],
+                            stdin=tar.stdout, capture_output=True, text=True)
+    if tar.returncode or rc.returncode:
+        warn(f"copy to {dest} failed (tar {tar.returncode}, ssh {rc.returncode}): {rc.stderr.strip()[-400:]}")
+        return False
+    return True
 
 def connect_osb(ecid=None, ws=None):
     ws = ws or only_installed_ws(ecid)
