@@ -18,14 +18,13 @@ Nothing on the stock OS is modified: a normal reboot always returns to stock iOS
                                  DEVELOPING FEATURE (not device-tested): a 2nd iOS 27.x on its own volumes
                                  (OS2System + OS2Data), installed from 2nd Data and booted from pwned DFU
 """
-import argparse, glob, json, os, shutil, subprocess, sys, time
+import argparse, glob, json, os, shutil, signal, subprocess, sys, time
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(ROOT, 'lib'))
-from common import (serial_source, parse_ticket, SerialFileTail,
-                    say, warn, die, run, ask, host_check, irec_query, wait_dfu, board_of, list_profiles,
+from common import (say, warn, die, run, ask, host_check, irec_query, wait_dfu, board_of, list_profiles,
                     find_profile, Workspace, SSH, SSH_PORT, device_udid, WORKROOT, LIB, PAYLOAD, BOARD_PRODUCTS,
-                    BOARD_HELP)
+                    BOARD_HELP, close_ssh_proxies)
 
 # ------------------------------------------------------------------------------------------- workspaces
 def workspaces_for(ecid):
@@ -61,7 +60,7 @@ def cmd_boot(a):
     q, resume = current_device()
     ws = installed_ws(q)
     if not ws:
-        die("2nd Data is not installed for this iPhone (no workspace in ~/dualboot-work).\n"
+        die(f"2nd Data is not installed for this iPhone (no workspace in {WORKROOT}).\n"
             "    -> run: ./dualboot.py install")
     say(f"iPhone ECID {q['ECID']}  board {ws.profile['board']}  iOS {ws.profile['version']} ({ws.profile['build']})")
     sel = load_selected()
@@ -113,6 +112,10 @@ def cmd_doctor(a):
         warn("missing:"); [print("     -", b) for b in bad]; sys.exit(1)
     say("Mac OK: all tools present (irecovery, iproxy, ldid, ipsw, pyimg4, pyusb, usbliter8ctl)")
 
+def cmd_dfu_guide(a):
+    from dfu_guide import run_guide
+    run_guide()
+
 def cmd_ssh(a):
     q = irec_query()
     ecid = a.ecid or (q or {}).get('ECID')
@@ -128,7 +131,8 @@ def cmd_ssh(a):
     ws = cands[-1]
     udid = device_udid(ws.ecid) or die("no iPhone on USB (is 2nd Data booted?)")
     ssh = SSH(ws, udid); ssh._iproxy()
-    os.execvp('ssh', ['ssh', *ssh._base(), '-p', str(SSH_PORT), 'root@localhost', *a.remote])
+    result = subprocess.run(['ssh', *ssh._base(), '-p', str(SSH_PORT), 'root@localhost', *a.remote])
+    raise SystemExit(result.returncode if result.returncode >= 0 else 128 - result.returncode)
 
 def build_osb(ws):
     ws.py('mk_osb.py', capture=True)
@@ -396,7 +400,7 @@ def extract_ipsw(ws, ipsw, extra_keys=()):
         die(f"the IPSW is {m.get('ProductBuildVersion')}, the profile needs {ws.profile['build']}")
     keys = ['ANE', 'AOP', 'AVE', 'Ap,SecurePageTableMonitor', 'Ap,TrustedExecutionMonitor', 'GFX', 'ISP', 'PMP',
             'StaticTrustCache', 'SIO', 'WCHFirmwareUpdater', 'KernelCache', 'DeviceTree', 'iBEC', 'iBSS',
-            'RestoreRamDisk', 'RestoreTrustCache', 'RestoreSEP'] + list(extra_keys)
+            'RestoreRamDisk', 'RestoreTrustCache', 'RestoreSEP', 'RestoreLogo'] + list(extra_keys)
     ident = [b for b in m['BuildIdentities'] if b['Info'].get('DeviceClass', '').lower() == ws.profile['board']
              and b['Info'].get('RestoreBehavior') == 'Erase'][0]
     keys = [k for k in keys if k in ident['Manifest']]     # iPads have no WCHFirmwareUpdater (wireless charging)
@@ -479,56 +483,65 @@ def prepare_tickets(ws):
     run(sys.executable, os.path.join(LIB, 'mkimg4.py'), sep[0], ws.p('out/apticket.im4m'), ws.p('out/rsep.img4'),
         '--tag', 'rsep', capture=True)
 
-def prepare_iboot(ws):
+def _prepare_iboot_images(ws, jobs):
     from pyimg4 import IM4P
     import plistlib
-    m = plistlib.load(open(ws.p('build/ipsw/BuildManifest.plist'), 'rb'))
+    with open(ws.p('build/ipsw/BuildManifest.plist'), 'rb') as stream:
+        m = plistlib.load(stream)
     ident = [b for b in m['BuildIdentities'] if b['Info'].get('DeviceClass', '').lower() == ws.profile['board']
              and b['Info'].get('RestoreBehavior') == 'Erase'][0]
-    for key, out, args in (('iBSS', 'iBoot.min.raw', 'rd=md0 -v wdt=-1 serial=3 debug=0x2014e'),
-                           ('iBEC', 'iBoot.osb.raw', '-v serial=3 debug=0x2014e launchd_unsecure_cache=1 wdt=-1')):
-        if os.path.exists(ws.p('out', out)):
-            continue
-        p = IM4P(open(ws.p('build/ipsw', ident['Manifest'][key]['Info']['Path']), 'rb').read())
+    for key, out, args in jobs:
+        with open(ws.p('build/ipsw', ident['Manifest'][key]['Info']['Path']), 'rb') as stream:
+            p = IM4P(stream.read())
         try:
             p.payload.decompress()
         except Exception:
             pass
-        raw = ws.p('build', key + '.stock.raw'); open(raw, 'wb').write(p.payload.output().data)
-        run(sys.executable, os.path.join(LIB, 'patch_iboot.py'), '--no-fsboot', f'--boot-args={args}', raw,
+        raw = ws.p('build', key + '.stock.raw')
+        with open(raw, 'wb') as stream:
+            stream.write(p.payload.output().data)
+        handoff = ['--ibss-skip-display-init'] if key == 'iBSS' and ws.profile['board'] == 'n104ap' else []
+        run(sys.executable, os.path.join(LIB, 'patch_iboot.py'), '--no-fsboot', *handoff, f'--boot-args={args}', raw,
             ws.p('out', out), capture=True)
 
+def prepare_iboot(ws):
+    _prepare_iboot_images(ws, (
+        ('iBSS', 'iBoot.min.raw', 'rd=md0 -v wdt=-1 serial=3 debug=0x2014e'),
+        ('iBEC', 'iBoot.osb.raw', '-v serial=3 debug=0x2014e launchd_unsecure_cache=1 wdt=-1'),
+    ))
+
+def prepare_setup_iboot(ws):
+    args = 'rd=md0 -v wdt=-1 debug=0x2014e'
+    _prepare_iboot_images(ws, (
+        ('iBSS', 'iBSS.setup.raw', args),
+        ('iBEC', 'iBEC.setup.raw', args),
+    ))
+    say(f"setup iBSS/iBEC rebuilt separately; boot-args: {args}")
+    if ws.profile['board'] == 'n104ap':
+        say('n104 display handoff: iBSS initialization skipped; iBEC initialization retained')
+
 def build_setup_chain(ws, mode):
+    prepare_setup_iboot(ws)
     ws.py('mk_setuprd.py', mode, capture=True)
     ws.py('mk_chain.py', mode, capture=True)
-    ws.py('mk_kernel.py', capture=True)     # after mk_chain: replaces its stock kernel/TXM with the patched ones
+    ws.py('mk_kernel.py', capture=True)
+
 
 def setup_boot(ws, mode):
-    """Boot the setup ramdisk and follow rdsetup on the UART. Returns the captured bytes."""
-    ser = serial_source(ws.p('logs', f'setup-{mode}-{time.strftime("%Y%m%d-%H%M%S")}.log'))
-    if not isinstance(ser, SerialFileTail) and not ser.available():
-        die("no serial port of the pwned-DFU board (/dev/cu.usbmodem*) - needed to read the setup result.\n"
-            "    (if another program owns the UART: DUALBOOT_SERIAL_LOG=<its log file>)")
+    from setup_usb import wait_for_setup
     say("boot setup ramdisk ...")
-    r = run(sys.executable, os.path.join(LIB, 'boot_chain.py'), env=ws.env(), check=False)
-    if r.returncode:
+    result = run(sys.executable, os.path.join(LIB, 'boot_chain.py'), env=ws.env(), check=False)
+    if result.returncode:
         die("sending the setup chain failed - put the phone back into pwned DFU and retry")
-    done = [b'SETUP DONE', b'SETUP FAILED'] if mode == 'install' else [b'REMOVE DONE', b'REMOVE FAILED']
-    say(f"waiting for rdsetup ({'create DataB + copy data + read the APTicket' if mode == 'install' else 'delete DataB'}) "
-        "- this can take a few minutes ...")
-    last = [0.0]
-    def progress(buf):
-        if time.time() - last[0] > 30:
-            last[0] = time.time(); print("   ... ", (buf[-120:].decode('latin1').strip().splitlines() or [''])[-1][:110])
-    hit = ser.wait_for(done, timeout=1800, progress=progress)
-    if hit is None:
-        die("no rdsetup result on the UART after 30 minutes")
-    for l in ser.buf.decode('latin1').splitlines():
-        if '[rdsetup]' in l and 'TICKET' not in l and 'TKT' not in l:
-            print('    ' + l.strip()[:150])
-    if hit.endswith(b'FAILED'):
-        die("rdsetup reported an error (see above) - nothing else was changed")
-    return ser.buf
+    try:
+        prior, transcript = wait_for_setup(say, mode=mode)
+    except (ValueError, OSError) as exc:
+        die(f'USB setup result unavailable: {exc}')
+    _save_private(ws.p('logs', f'setup-{mode}-{time.strftime("%Y%m%d-%H%M%S")}.log'), transcript)
+    if prior is not None:
+        _save_private(ws.p('logs/setup-prior.log'), prior)
+    return prior, transcript
+
 
 def cmd_install(a):
     bad = host_check()
@@ -585,16 +598,18 @@ def cmd_install(a):
     prepare_iboot(ws)
     say("build setup chain ..."); build_setup_chain(ws, 'install')
     q = wait_dfu(pwned=True)
-    buf = setup_boot(ws, 'install')
+    prior_log, buf = setup_boot(ws, 'install')
     import re
     m = re.search(rb'SYSBUILD (\S+) SYSVER (\S+)', buf)
     if not m or m.group(1).decode() != prof['build']:
         die(f"the phone runs {m.group(1).decode() if m else '?'} - does not match profile {prof['build']}. "
             "Stopping (DataB was created but is unused; remove it with ./dualboot.py remove).")
-    tkt, d = parse_ticket(buf)
-    if tkt is None:
-        die(f"could not rebuild the APTicket from the UART ({d}) - run install again (DataB is kept)")
-    open(ws.p('out/apticket.installed.der'), 'wb').write(tkt)
+    from setup_usb import ticket_from_transcript
+    try:
+        d, tkt = ticket_from_transcript(prior_log, buf, ws.ecid, prof)
+    except ValueError as exc:
+        die(f'could not verify the USB setup result: {exc}')
+    _save_private(ws.p('out/apticket.installed.der'), tkt)
     say(f"installed APTicket: {d[:16]}... ({len(tkt)} bytes)")
     ws.state['setup'] = time.strftime('%Y-%m-%d %H:%M:%S'); ws.save()
     say("build 2nd Data ...")
@@ -620,6 +635,17 @@ def cmd_install(a):
     say("DONE. Finish Setup on the phone (Wi-Fi, Apple ID ...). Reboot = stock iOS; 2nd Data again: pwned DFU -> ./boot.sh")
     warn("If the phone shows 'iPhone Partially Set Up': tap 'Continue with Partial Setup'. "
          "NEVER 'Erase and Start Over'.")
+
+def _save_private(path, data):
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_NOFOLLOW', 0), 0o600)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, 'wb') as stream:
+            fd = -1
+            stream.write(data)
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 def cmd_remove(a):
     q = wait_dfu(pwned=True)
@@ -853,7 +879,6 @@ OS2_STAGE = '/var/jb/tmp/dualboot-os2'
 OS2_KEYS = ['Cryptex1,SystemTrustCache', 'Cryptex1,AppTrustCache']
 
 class OS2Workspace(Workspace):
-    """~/dualboot-work/os2-<ECID>-<build>"""
     def __init__(self, ecid, profile):
         super().__init__(ecid, profile, prefix=OS2_PREFIX)
 
@@ -1120,6 +1145,7 @@ def main():
     ap = argparse.ArgumentParser(prog='dualboot.py', description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--no-wait', action='store_true', help="don't wait for SSH after booting")
+    ap.add_argument('--dfu-guide', action='store_true', help='guide a connected A13 iPhone from normal iOS or Recovery into DFU')
     sub = ap.add_subparsers(dest='cmd')
     sub.add_parser('boot', help='boot 2nd Data (pwned DFU)').add_argument('--no-wait', action='store_true')
     s = sub.add_parser('install', help='first-time setup'); s.add_argument('--ipsw'); s.add_argument('--build')
@@ -1152,13 +1178,28 @@ def main():
     o.add_parser('remove', help='delete OS2System/OS2Data (2nd Data must be running)').add_argument('--ecid')
     o.add_parser('status')
     a = ap.parse_args()
-    if getattr(a, 'ipsw', None):
-        a.ipsw = clean_path(a.ipsw)
-    {'boot': cmd_boot, 'install': cmd_install, 'remove': cmd_remove, 'provision': cmd_provision,
-     'status': cmd_status, 'doctor': cmd_doctor, 'ssh': cmd_ssh, 'rebuild': cmd_rebuild,
-     'versions': cmd_versions, 'select': cmd_select, 'profile': cmd_profile, 'precheck': cmd_precheck,
-     'os2': cmd_os2,
-     None: cmd_auto}[a.cmd](a)
+    try:
+        if a.dfu_guide:
+            if a.cmd is not None:
+                ap.error('--dfu-guide must be used without another command')
+            return cmd_dfu_guide(a)
+        if getattr(a, 'ipsw', None):
+            a.ipsw = clean_path(a.ipsw)
+        {'boot': cmd_boot, 'install': cmd_install,
+         'remove': cmd_remove, 'provision': cmd_provision,
+         'status': cmd_status, 'doctor': cmd_doctor,
+         'ssh': cmd_ssh, 'rebuild': cmd_rebuild,
+         'versions': cmd_versions, 'select': cmd_select, 'profile': cmd_profile, 'precheck': cmd_precheck,
+         'os2': cmd_os2,
+         None: cmd_auto}[a.cmd](a)
+    finally:
+        close_ssh_proxies()
+
+
+def exit_on_signal(signum, frame):
+    raise SystemExit(128 + signum)
 
 if __name__ == '__main__':
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, exit_on_signal)
     main()

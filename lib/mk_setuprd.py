@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""Setup ramdisk for the dualboot tool: Apple's restore ramdisk (RestoreRamDisk of the IPSW, unmodified except for
-two files) whose restored_external is rdsetup, plus its trust cache with rdsetup's cdhash added.
-
-  mk_setuprd.py install|remove  ->  $OSB_WORK/setuprd-<mode>.img4 (rdsk), $OSB_WORK/setuptc-<mode>.img4 (rtsc)
-
-  /usr/local/bin/restored_external    = rdsetup (payload/setup/rdsetup, built from src/rdsetup.c)
-  /usr/local/share/dualboot/mode      = "install" | "remove"
-Both are signed with $OSB_OUT/apticket.im4m (our iBoot does not check AP image signatures anyway).
-Nothing here touches the phone."""
 import os, shutil, struct, subprocess, sys, tempfile
 from pyimg4 import IM4P, IM4M, IMG4
 
@@ -17,6 +8,7 @@ import osbcfg
 
 ROOT = os.path.dirname(HERE)
 RDSETUP = os.environ.get('OSB_RDSETUP') or os.path.join(ROOT, 'payload/setup/rdsetup')
+USBRELAY = os.path.join(ROOT, 'payload/setup/rdsetup_usbrelay')
 
 def sh(*a):
     r = subprocess.run(a, capture_output=True, text=True)
@@ -29,6 +21,27 @@ def cdhash(path):
         if l.startswith('CDHash='):
             return bytes.fromhex(l.split('=', 1)[1])
     sys.exit(f"no CDHash for {path}")
+
+
+def stage_payload(mnt, mode):
+    if mode not in ('install', 'remove'):
+        raise ValueError(f'unknown setup mode: {mode}')
+    dst = os.path.join(mnt, 'usr/local/bin/restored_external')
+    child = os.path.join(mnt, 'usr/local/bin/rdsetup')
+    if not os.path.isfile(dst):
+        raise ValueError('restore ramdisk has no usr/local/bin/restored_external')
+    if not os.path.isfile(USBRELAY):
+        raise ValueError(f'USB setup relay missing: {USBRELAY}')
+    shutil.copyfile(RDSETUP, child)
+    os.chmod(child, 0o755)
+    shutil.copyfile(USBRELAY, dst)
+    os.chmod(dst, 0o755)
+    config = os.path.join(mnt, 'usr/local/share/dualboot')
+    os.makedirs(config, exist_ok=True)
+    with open(os.path.join(config, 'mode'), 'w') as stream:
+        stream.write(mode + '\n')
+    return RDSETUP, USBRELAY
+
 
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else 'install'
@@ -47,12 +60,7 @@ def main():
     sh('hdiutil', 'attach', '-nobrowse', '-owners', 'off', '-noverify', '-imagekey',
        'diskimage-class=CRawDiskImage', '-mountpoint', mnt, raw)
     try:
-        dst = os.path.join(mnt, 'usr/local/bin/restored_external')
-        if not os.path.exists(dst):
-            sys.exit("!! restore ramdisk has no usr/local/bin/restored_external")
-        shutil.copyfile(RDSETUP, dst); os.chmod(dst, 0o755)
-        os.makedirs(os.path.join(mnt, 'usr/local/share/dualboot'), exist_ok=True)
-        open(os.path.join(mnt, 'usr/local/share/dualboot/mode'), 'w').write(mode + '\n')
+        sources = stage_payload(mnt, mode)
         subprocess.run(['sync'])
     finally:
         sh('hdiutil', 'detach', mnt)
@@ -63,9 +71,10 @@ def main():
     ver, = struct.unpack_from('<I', tc, 0); n, = struct.unpack_from('<I', tc, 20)
     assert ver == 1 and len(tc) == 24 + 22 * n, f"unexpected trust cache v{ver} len {len(tc)}"
     ents = [tc[24 + 22 * i:24 + 22 * (i + 1)] for i in range(n)]
-    e = cdhash(RDSETUP) + b'\x02\x00'
-    if e not in ents:
-        ents.append(e)
+    for path in sources:
+        e = cdhash(path) + b'\x02\x00'
+        if e not in ents:
+            ents.append(e)
     ents.sort()
     newtc = tc[:20] + struct.pack('<I', len(ents)) + b''.join(ents)
     open(osbcfg.work(f'setuptc-{mode}.img4'), 'wb').write(
