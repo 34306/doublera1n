@@ -21,7 +21,7 @@ from test_setup_usb import transcript_for
 
 
 class CliTests(unittest.TestCase):
-    def test_only_dfu_guide_is_added_to_original_cli(self):
+    def test_cli_exposes_the_dfu_guide_and_relay_probe(self):
         parse_args = argparse.ArgumentParser.parse_args
         parsers = []
 
@@ -37,7 +37,7 @@ class CliTests(unittest.TestCase):
         options = {option for action in parser._actions for option in action.option_strings}
         self.assertEqual(options, {'-h', '--help', '--no-wait', '--dfu-guide'})
         sub = next(action for action in parser._actions if isinstance(action, argparse._SubParsersAction))
-        self.assertEqual(set(sub.choices), {'boot', 'install', 'remove', 'provision', 'status', 'doctor',
+        self.assertEqual(set(sub.choices), {'boot', 'install', 'probe', 'remove', 'provision', 'status', 'doctor',
                                           'ssh', 'rebuild', 'versions', 'select', 'precheck', 'profile', 'os2'})
         self.assertNotIn('--usb-setup', sub.choices['install']._option_string_actions)
 
@@ -88,13 +88,16 @@ class SetupDefaultsTests(unittest.TestCase):
     def test_setup_boot_uses_usb_without_transport_flags(self):
         for mode in ('install', 'remove'):
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
-                ws = SimpleNamespace(p=lambda *parts: str(Path(directory).joinpath(*parts)), env=lambda: {})
+                ws = SimpleNamespace(p=lambda *parts: str(Path(directory).joinpath(*parts)), env=lambda: {}, ecid=ECID)
                 (Path(directory) / 'logs').mkdir()
                 with patch.object(dualboot, 'run', return_value=SimpleNamespace(returncode=0)) as run, \
                         patch.object(setup_usb, 'wait_for_setup', return_value=(None, b'real log')) as wait, \
                         redirect_stdout(io.StringIO()):
                     self.assertEqual(dualboot.setup_boot(ws, mode), (None, b'real log'))
-                wait.assert_called_once_with(dualboot.say, mode=mode)
+                wait.assert_called_once()
+                self.assertEqual(wait.call_args.kwargs['mode'], mode)
+                self.assertEqual(wait.call_args.kwargs['ecid'], ECID)
+                self.assertTrue(callable(wait.call_args.kwargs['save_snapshot']))
                 self.assertEqual(run.call_args.args, (sys.executable, str(ROOT / 'lib/boot_chain.py')))
                 saved = next((Path(directory) / 'logs').glob(f'setup-{mode}-*.log'))
                 self.assertEqual(saved.read_bytes(), b'real log')
@@ -200,7 +203,7 @@ class RelayBinaryTests(unittest.TestCase):
         self.assertTrue(entitlements['com.apple.private.usbdevice.setdescription'])
         self.assertTrue(entitlements['platform-application'])
         self.assertIn(b'DBUSB1 ', binary.read_bytes())
-        self.assertNotIn(b'DBPROBE1 ', binary.read_bytes())
+        self.assertIn(b'DBPROBE1 ', binary.read_bytes(), 'Run bash src/build_usbrelay.sh before the Mac checks')
 
 
 if __name__ == '__main__':

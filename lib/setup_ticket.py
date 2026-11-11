@@ -14,6 +14,25 @@ _HEADER = re.compile(
 _TICKET_NAME = re.compile(r"apticket-([0-9A-Fa-f]{16})\.der$")
 
 
+def validate_setup_session(data, device, ecid, profile):
+    from pyimg4 import IM4M
+
+    if device.get('MODE') != 'DFU' or 'usbliter8' not in device.get('PWND', ''):
+        raise SetupError('put the target iPhone in usbliter8 pwned DFU before requesting a setup ticket')
+    try:
+        identity = int(device['ECID'], 16)
+        nonce = bytes.fromhex(device['NONC'])
+        ticket = IM4M(data)
+        chip, board = int(profile['cpid'], 16), int(profile['bdid'], 16)
+    except (KeyError, ValueError) as exc:
+        raise SetupError(f'could not validate the setup ticket and DFU identity ({exc})') from exc
+    if not nonce or identity != int(ecid, 16) or ticket.ecid != identity or ticket.apnonce != nonce:
+        raise SetupError('the setup ticket does not match the target iPhone and current DFU nonce')
+    if ticket.chip_id != chip or ticket.board_id != board:
+        raise SetupError('the setup ticket does not match the selected chip and board')
+    return ticket
+
+
 def _install_log(data, build):
     log = data.decode('latin1')
     if not re.search(r"(?m)^===== dualboot setup ramdisk v\d+ \(INSTALL\) =====$", log):

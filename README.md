@@ -110,7 +110,19 @@ Reset or unplug/reconnect the board before each exploit attempt; you do not need
 
 The original setup read its completion log and installed APTicket through the iPhone's UART. This board exposes exploit logs instead. The setup ramdisk now starts USB communication through CoreFoundation and IOKit, runs the original installer, and returns its real log and ticket directly to the Mac. The Mac checks the result and device identity before continuing. We also corrected the iBSS handoff, built iBSS and iBEC separately, left display initialization to iBEC on iPhone 11, placed boot arguments in verified padding, and loaded the restore trust cache.
 
-This is the default `./boot.sh` workflow. **`--dfu-guide` is the only added CLI option.** The signed USB relay is included; users do not need to compile it. The original commands and menu remain available.
+This is the default `./boot.sh` workflow. The signed USB relay is included. `--dfu-guide` helps with the button timing, and `probe` checks the relay connection before setup.
+
+### Test the relay before setup
+
+Build the relay with `bash src/build_usbrelay.sh` on a Mac with the iPhoneOS SDK and `ldid`. Then run `./boot.sh probe --build <build> --ipsw <path-to-ipsw>` with the target phone in pwned DFU. The probe uses a separate workspace and a ramdisk that omits the `rdsetup` installer. A successful handshake prints `USB relay probe passed`. Reboot into stock iOS before running setup.
+
+Relay connections are selected by the target ECID and operation. Setup tickets are requested for the current DFU session and checked against its nonce, the selected board, and the RestoreSEP image. Received setup transcripts are saved as private host files while the command runs, including snapshots received before a later failure.
+
+The additional probe and ticket checks were also tested by XeDoX-dev on **iPhone 11 Pro (`d421ap`), iOS 27.0 beta 3 (`24A5380h`)**, using a Waveshare RP2350-USB-A and macOS 14.8.7. The relay probe, installation, second Data boot, SSH, Sileo source refresh and a TrollStore Lite installation succeeded. This is one device report, not a compatibility claim for every model or build. The USB setup implementation and original Waveshare workflow are by [Antonio Zekic](https://github.com/antoniozekic/doublera1n); these probe, ticket and diagnostic improvements build on that work.
+
+Finish Setup using Wi-Fi and choose to set up Apple Account later. iCloud sign-in is unavailable while SEP is disabled. On this test device, Setup initially looped even after choosing to skip sign-in. Manually setting `SetupDone` and `SetupFinishedAllSteps` to true in the second Data volume's `com.apple.purplebuddy.plist`, then restarting the preferences daemon and interface, allowed the user to skip sign-in and reach the Home Screen. This workaround has only been reported on that device and is not applied automatically by the installer.
+
+The same Mac could not mount the decrypted beta root filesystem with `hdiutil` (`no mountable file systems`). Installation reused a previously extracted rootfs cache after checking its BuildManifest board/build and required files. The mount problem is still unresolved; the successful boot does not establish that a clean installation on macOS 14 can extract this rootfs.
 
 Downloads, extracted firmware, tickets, SSH keys and logs now live in **`dualboot-work/` inside the repository**, ignored by Git. `DUALBOOT_HOME` still overrides that location.
 

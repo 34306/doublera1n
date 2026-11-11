@@ -24,6 +24,12 @@
 #ifndef INITIAL_LOG_PATH
 #define INITIAL_LOG_PATH "/mnt2/dualboot-setup.log"
 #endif
+#ifndef MODE_PATH
+#define MODE_PATH "/usr/local/share/dualboot/mode"
+#endif
+#ifndef SERIAL_PATH
+#define SERIAL_PATH "/usr/local/share/dualboot/usb-serial"
+#endif
 
 #define MAX_TRANSCRIPT (8u * 1024u * 1024u)
 #define MAX_INITIAL (64u * 1024u)
@@ -33,10 +39,39 @@ extern void IOUSBDeviceDescriptionSetSerialString(CFTypeRef, CFStringRef);
 extern IOReturn IOUSBDeviceControllerCreate(CFAllocatorRef, CFTypeRef *);
 extern IOReturn IOUSBDeviceControllerSetDescription(CFTypeRef, CFTypeRef);
 
+static int probe_mode;
+
+static int read_mode(void) {
+    char mode[32];
+    FILE *stream = fopen(MODE_PATH, "r");
+    if (!stream) return -1;
+    char *line = fgets(mode, sizeof mode, stream);
+    int extra = fgetc(stream);
+    fclose(stream);
+    if (!line || extra != EOF) return -1;
+    mode[strcspn(mode, "\r\n")] = '\0';
+    if (!strcmp(mode, "probe")) { probe_mode = 1; return 0; }
+    return strcmp(mode, "install") && strcmp(mode, "remove") ? -1 : 0;
+}
+
 static int enable_usb_mux(void) {
     CFTypeRef description = IOUSBDeviceDescriptionCreateWithType(kCFAllocatorDefault, CFSTR("standardMuxOnly"));
     if (!description) return -1;
-    IOUSBDeviceDescriptionSetSerialString(description, CFSTR("doublera1n USB setup"));
+    char serial[64];
+    FILE *stream = fopen(SERIAL_PATH, "r");
+    CFStringRef identity = NULL;
+    if (stream) {
+        if (fgets(serial, sizeof serial, stream)) {
+            serial[strcspn(serial, "\r\n")] = '\0';
+            identity = CFStringCreateWithCString(kCFAllocatorDefault, serial, kCFStringEncodingASCII);
+        }
+        fclose(stream);
+        if (!identity) { CFRelease(description); return -1; }
+        IOUSBDeviceDescriptionSetSerialString(description, identity);
+        CFRelease(identity);
+    } else {
+        IOUSBDeviceDescriptionSetSerialString(description, CFSTR("doublera1n USB setup"));
+    }
 
     CFTypeRef controller = NULL;
     IOReturn status = kIOReturnError;
@@ -120,8 +155,8 @@ static int serve_snapshot(int listener) {
     struct timeval timeout = {5, 0};
     setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof timeout);
     char header[96];
-    int n = snprintf(header, sizeof header, "DBUSB1 %zu %zu %d\n",
-                     initial_len, transcript_len, transcript_overflow);
+    const char *format = probe_mode ? "DBPROBE1 %zu %zu %d\n" : "DBUSB1 %zu %zu %d\n";
+    int n = snprintf(header, sizeof header, format, initial_len, transcript_len, transcript_overflow);
     if (n > 0 && (size_t)n < sizeof header) {
         write_all(fd, header, (size_t)n);
         if (initial_len) write_all(fd, initial, initial_len);
@@ -133,6 +168,7 @@ static int serve_snapshot(int listener) {
 
 int main(void) {
     signal(SIGPIPE, SIG_IGN);
+    if (read_mode() != 0) return 1;
     if (enable_usb_mux() != 0) {
         const char msg[] = "[usbrelay] cannot enable AppleUSBDeviceMux\n";
         write_all(STDOUT_FILENO, msg, sizeof msg - 1);
@@ -143,6 +179,12 @@ int main(void) {
         const char msg[] = "[usbrelay] cannot listen on loopback port 2233\n";
         write_all(STDOUT_FILENO, msg, sizeof msg - 1);
         return 1;
+    }
+
+    if (probe_mode) {
+        for (;;) {
+            if (!serve_snapshot(listener) && errno != EINTR) return 1;
+        }
     }
 
     while (!serve_snapshot(listener)) {

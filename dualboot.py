@@ -457,10 +457,13 @@ def prepare_rootfs(ws, ipsw, dmg=None):
 
 def prepare_tickets(ws):
     """TSS-personalised IM4M (for the setup chain and the SEP image) + rsep.img4. Needs the phone in (pwned) DFU."""
-    if os.path.exists(ws.p('out/apticket.im4m')) and os.path.exists(ws.p('out/rsep.img4')):
-        return
+    import plistlib
+    import tempfile
+    from hashlib import sha384
+    from pyimg4 import IMG4
+    from setup_ticket import SetupError, validate_setup_session
+
     manifest = ws.p('build/ipsw/BuildManifest.plist')
-    sep = glob.glob(ws.p('build/ipsw/Firmware/all_flash/sep-firmware.*.RELEASE.im4p'))
     import precheck
     product = ws.profile['product_types'][0]
     me = precheck.apple_build(product, ws.profile['build'])
@@ -472,16 +475,37 @@ def prepare_tickets(ws):
             f"({latest['build']}) for the setup chain")
         d = precheck.fetch_parts(latest['url'], latest['build'], ws.profile['board'], ['RestoreSEP'])
         manifest = os.path.join(d, 'BuildManifest.plist')
-        sep = glob.glob(os.path.join(d, 'Firmware/all_flash/sep-firmware.*.RELEASE.im4p'))
-    say("TSS: requesting an APTicket for this phone from Apple ...")
-    r = run(sys.executable, os.path.join(LIB, 'get_apticket.py'), manifest,
-            ws.p('out/apticket.im4m'), '--board', ws.profile['board'], check=False, capture=True)
-    if r.returncode or not os.path.exists(ws.p('out/apticket.im4m')):
-        die("TSS request failed\n" + (r.stdout + r.stderr)[-800:])
-    if not sep:
-        die("sep-firmware not found")
-    run(sys.executable, os.path.join(LIB, 'mkimg4.py'), sep[0], ws.p('out/apticket.im4m'), ws.p('out/rsep.img4'),
-        '--tag', 'rsep', capture=True)
+    with open(manifest, 'rb') as stream:
+        identities = plistlib.load(stream)['BuildIdentities']
+    identity = next(i for i in identities if i['Info']['DeviceClass'].lower() == ws.profile['board']
+                    and i['Info'].get('RestoreBehavior') == 'Erase')
+    sep = os.path.join(os.path.dirname(manifest), identity['Manifest']['RestoreSEP']['Info']['Path'])
+    say("TSS: requesting a fresh setup APTicket for this DFU session ...")
+    with tempfile.TemporaryDirectory(prefix='setup-ticket-', dir=ws.p('out')) as directory:
+        ticket_path = os.path.join(directory, 'apticket.im4m')
+        sep_path = os.path.join(directory, 'rsep.img4')
+        r = run(sys.executable, os.path.join(LIB, 'get_apticket.py'), manifest, ticket_path,
+                '--board', ws.profile['board'], '--behavior', 'Erase', check=False, capture=True)
+        if r.returncode or not os.path.isfile(ticket_path):
+            die("TSS request failed\n" + (r.stdout + r.stderr)[-800:])
+        run(sys.executable, os.path.join(LIB, 'mkimg4.py'), sep, ticket_path, sep_path,
+            '--tag', 'rsep', capture=True)
+        with open(ticket_path, 'rb') as stream:
+            ticket_data = stream.read()
+        try:
+            ticket = validate_setup_session(ticket_data, irec_query() or {}, ws.ecid, ws.profile)
+            digest = next((p.value for image in ticket.images if image.fourcc == 'rsep'
+                           for p in image.properties if p.fourcc == 'DGST'), None)
+            with open(sep_path, 'rb') as stream:
+                restored_sep = IMG4(stream.read()).im4p.output()
+            if digest != sha384(restored_sep).digest():
+                raise SetupError('the setup ticket does not match this board\'s RestoreSEP image')
+        except SetupError as exc:
+            die(str(exc))
+        os.chmod(sep_path, 0o600)
+        os.chmod(ticket_path, 0o600)
+        os.replace(sep_path, ws.p('out/rsep.img4'))
+        os.replace(ticket_path, ws.p('out/apticket.im4m'))
 
 def _prepare_iboot_images(ws, jobs):
     from pyimg4 import IM4P
@@ -533,14 +557,39 @@ def setup_boot(ws, mode):
     result = run(sys.executable, os.path.join(LIB, 'boot_chain.py'), env=ws.env(), check=False)
     if result.returncode:
         die("sending the setup chain failed - put the phone back into pwned DFU and retry")
+    logpath = ws.p('logs', f'setup-{mode}-{time.strftime("%Y%m%d-%H%M%S")}.log')
+    def save_snapshot(prior, transcript):
+        _save_private(logpath, transcript)
+        if prior is not None:
+            _save_private(ws.p('logs/setup-prior.log'), prior)
     try:
-        prior, transcript = wait_for_setup(say, mode=mode)
+        prior, transcript = wait_for_setup(say, mode=mode, ecid=ws.ecid, save_snapshot=save_snapshot)
     except (ValueError, OSError) as exc:
         die(f'USB setup result unavailable: {exc}')
-    _save_private(ws.p('logs', f'setup-{mode}-{time.strftime("%Y%m%d-%H%M%S")}.log'), transcript)
-    if prior is not None:
-        _save_private(ws.p('logs/setup-prior.log'), prior)
+    save_snapshot(prior, transcript)
     return prior, transcript
+
+
+def cmd_probe(a):
+    """Boot the Waveshare relay with its installer child omitted from the ramdisk."""
+    bad = host_check()
+    if bad:
+        die("the Mac is missing tools - run ./setup.sh first:\n      " + "\n      ".join(bad))
+    q = wait_dfu(pwned=True)
+    board = board_of(q) or die('unsupported device for the relay probe')
+    selected = load_selected()
+    if selected.get('board') != board:
+        selected = {}
+    build = a.build or selected.get('build') or die('choose a build with probe --build <build>')
+    ipsw = a.ipsw or (selected.get('ipsw') if selected.get('build') == build else None)
+    profile = ensure_profile(board, build, selected.get('version', '') if selected.get('build') == build else '', ipsw)
+    ws = Workspace(q['ECID'], profile, prefix='probe-')
+    say(f"USB relay probe for {board}, iOS {profile['version']} ({build})")
+    extract_ipsw(ws, find_ipsw(profile, ipsw))
+    prepare_tickets(ws)
+    build_setup_chain(ws, 'probe')
+    setup_boot(ws, 'probe')
+    say('USB relay probe passed. Reboot into stock iOS before running setup.')
 
 
 def cmd_install(a):
@@ -632,7 +681,8 @@ def cmd_install(a):
         die("2nd Data did not come up on SSH - check the screen (verbose boot). Once it is up, run: ./dualboot.py provision")
     a.ecid = q['ECID']
     cmd_provision(a)
-    say("DONE. Finish Setup on the phone (Wi-Fi, Apple ID ...). Reboot = stock iOS; 2nd Data again: pwned DFU -> ./boot.sh")
+    say("DONE. Finish Setup on the phone with Wi-Fi. Skip Apple Account sign-in: iCloud is unavailable with SEP disabled.")
+    say("Reboot = stock iOS; 2nd Data again: pwned DFU -> ./boot.sh")
     warn("If the phone shows 'iPhone Partially Set Up': tap 'Continue with Partial Setup'. "
          "NEVER 'Erase and Start Over'.")
 
@@ -1150,6 +1200,8 @@ def main():
     sub.add_parser('boot', help='boot 2nd Data (pwned DFU)').add_argument('--no-wait', action='store_true')
     s = sub.add_parser('install', help='first-time setup'); s.add_argument('--ipsw'); s.add_argument('--build')
     s.add_argument('--skip-precheck', action='store_true')
+    s = sub.add_parser('probe', help='boot the USB relay and check its connection before setup')
+    s.add_argument('--ipsw'); s.add_argument('--build')
     s = sub.add_parser('remove', help='delete DataB + Preboot files'); s.add_argument('--ipsw')
     s = sub.add_parser('provision', help='(re)apply userland fixes over SSH'); s.add_argument('--ecid')
     s.add_argument('--apply', action='store_true', help='also run osb-boot.sh now (restarts daemons, respring)')
@@ -1185,7 +1237,7 @@ def main():
             return cmd_dfu_guide(a)
         if getattr(a, 'ipsw', None):
             a.ipsw = clean_path(a.ipsw)
-        {'boot': cmd_boot, 'install': cmd_install,
+        {'boot': cmd_boot, 'install': cmd_install, 'probe': cmd_probe,
          'remove': cmd_remove, 'provision': cmd_provision,
          'status': cmd_status, 'doctor': cmd_doctor,
          'ssh': cmd_ssh, 'rebuild': cmd_rebuild,

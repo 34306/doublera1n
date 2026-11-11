@@ -158,6 +158,7 @@ class Workspace:
         e = dict(os.environ)
         e.update(OSB_WORK=self.p('build'), OSB_OUT=self.p('out'), OSB_IPSW=self.p('build/ipsw'),
                  OSB_PROFILE=self.profile['dir'], OSB_BOARD=self.profile['board'],
+                 OSB_SETUP_ECID=self.ecid,
                  OSB_TICKET=self.p('out/apticket.installed.der'), OSB_ROOTFS=self.p('rootfs'),
                  OSB_PREBUILT=os.path.join(PAYLOAD, 'boot'), USBLITER8CTL=USBLITER8CTL)
         e.update({k: str(v) for k, v in extra.items()})

@@ -14,14 +14,21 @@ REMOTE_PORT = 2233
 MAX_TRANSCRIPT = 8 * 1024 * 1024
 
 
-def read_snapshot(port=LOCAL_PORT):
+def relay_serial(ecid, mode):
+    if mode not in ('install', 'remove', 'probe'):
+        raise ValueError(f'unknown setup mode: {mode}')
+    return f'doublera1n-{mode}-{int(ecid, 16):016x}'
+
+
+def read_snapshot(port=LOCAL_PORT, *, probe=False):
     with socket.create_connection(('127.0.0.1', port), timeout=5) as conn:
         conn.settimeout(10)
         stream = conn.makefile('rb')
         line = stream.readline(96)
         if not line:
             raise ConnectionError('USB relay is not answering yet')
-        match = re.fullmatch(rb'DBUSB1 (\d+) (\d+) ([01])\n', line)
+        prefix = b'DBPROBE1' if probe else b'DBUSB1'
+        match = re.fullmatch(prefix + rb' (\d+) (\d+) ([01])\n', line)
         if not match:
             raise SetupError('USB setup relay sent an invalid header')
         old_len, now_len, overflow = (int(value) for value in match.groups())
@@ -79,14 +86,21 @@ def _connection_diagnosis():
     return 'iPhone did not appear in USB mux or DFU/Recovery'
 
 
-def wait_for_setup(say, mode='install', timeout=1200):
-    if mode not in ('install', 'remove'):
+def wait_for_setup(say, mode='install', timeout=1200, *, ecid=None, save_snapshot=None):
+    if mode not in ('install', 'remove', 'probe'):
         raise ValueError(f'unknown setup mode: {mode}')
     expected_mode = mode.upper().encode()
     completed = b'===== ' + (b'SETUP' if mode == 'install' else b'REMOVE') + b' DONE ====='
+    command = ['iproxy', '-s', '127.0.0.1']
+    if ecid is not None:
+        command.extend(['-u', relay_serial(ecid, mode)])
+    command.append(f'{LOCAL_PORT}:{REMOTE_PORT}')
     errors = tempfile.TemporaryFile()
-    proxy = subprocess.Popen(['iproxy', '-s', '127.0.0.1', f'{LOCAL_PORT}:{REMOTE_PORT}'],
-                             stdout=subprocess.DEVNULL, stderr=errors)
+    try:
+        proxy = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=errors)
+    except BaseException:
+        errors.close()
+        raise
     start = time.monotonic()
     seen = 0
     connected = False
@@ -99,10 +113,16 @@ def wait_for_setup(say, mode='install', timeout=1200):
                 error = errors.read().decode('utf-8', 'replace')[-500:]
                 raise SetupError(f'iproxy exited: {error}')
             try:
-                initial, transcript = read_snapshot()
+                initial, transcript = read_snapshot(probe=True) if mode == 'probe' else read_snapshot()
+                if save_snapshot is not None:
+                    save_snapshot(initial, transcript)
                 if not connected:
                     say('USB setup relay connected to the iPhone')
                     connected = True
+                if mode == 'probe':
+                    if initial is not None or transcript:
+                        raise SetupError('USB probe returned unexpected setup data')
+                    return initial, transcript
                 if len(transcript) < seen:
                     raise SetupError('USB setup relay restarted during setup')
                 if len(transcript) > seen:

@@ -5,6 +5,7 @@ from pyimg4 import IM4P, IM4M, IMG4
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import osbcfg
+from setup_usb import relay_serial
 
 ROOT = os.path.dirname(HERE)
 RDSETUP = os.environ.get('OSB_RDSETUP') or os.path.join(ROOT, 'payload/setup/rdsetup')
@@ -24,7 +25,7 @@ def cdhash(path):
 
 
 def stage_payload(mnt, mode):
-    if mode not in ('install', 'remove'):
+    if mode not in ('install', 'remove', 'probe'):
         raise ValueError(f'unknown setup mode: {mode}')
     dst = os.path.join(mnt, 'usr/local/bin/restored_external')
     child = os.path.join(mnt, 'usr/local/bin/rdsetup')
@@ -32,20 +33,31 @@ def stage_payload(mnt, mode):
         raise ValueError('restore ramdisk has no usr/local/bin/restored_external')
     if not os.path.isfile(USBRELAY):
         raise ValueError(f'USB setup relay missing: {USBRELAY}')
-    shutil.copyfile(RDSETUP, child)
-    os.chmod(child, 0o755)
+    if mode == 'probe':
+        with open(USBRELAY, 'rb') as stream:
+            if b'DBPROBE1' not in stream.read():
+                raise ValueError('USB relay needs the probe build. Run src/build_usbrelay.sh on your Mac.')
+        if os.path.lexists(child):
+            os.unlink(child)
+    else:
+        shutil.copyfile(RDSETUP, child)
+        os.chmod(child, 0o755)
     shutil.copyfile(USBRELAY, dst)
     os.chmod(dst, 0o755)
     config = os.path.join(mnt, 'usr/local/share/dualboot')
     os.makedirs(config, exist_ok=True)
     with open(os.path.join(config, 'mode'), 'w') as stream:
         stream.write(mode + '\n')
-    return RDSETUP, USBRELAY
+    ecid = os.environ.get('OSB_SETUP_ECID')
+    if ecid:
+        with open(os.path.join(config, 'usb-serial'), 'w') as stream:
+            stream.write(relay_serial(ecid, mode) + '\n')
+    return (USBRELAY,) if mode == 'probe' else (RDSETUP, USBRELAY)
 
 
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else 'install'
-    assert mode in ('install', 'remove')
+    assert mode in ('install', 'remove', 'probe')
     ticket = IM4M(open(osbcfg.out('apticket.im4m'), 'rb').read())
     os.makedirs(osbcfg.WORK, exist_ok=True)
     # ramdisk payload (raw APFS image)
