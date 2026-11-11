@@ -204,7 +204,7 @@ int main(void) {
        with a weak _launch_active_user_switch import) and the debug helpers */
     mkdir("/private/var/jb/usr/libexec", 0755);
     if (exists("mobileactivationd")) { copy_file("mobileactivationd", "/private/var/jb/usr/libexec/mobileactivationd", 0755); say("installed patched /var/jb/usr/libexec/mobileactivationd"); }
-    static const char *tools[] = { "launchctl", "bpexec", "lsimg", "hactpoke", "maactivate", NULL };
+    static const char *tools[] = { "launchctl", "bpexec", "lsimg", "hactpoke", "maactivate", "ssh-listener", NULL };
     for (int i = 0; tools[i]; i++) if (exists(tools[i])) {
         char to[256]; snprintf(to, sizeof to, "/private/var/jb/usr/bin/%s", tools[i]);
         copy_file(tools[i], to, 0755); say("installed %s", to);
@@ -230,6 +230,14 @@ int main(void) {
         unsetenv("NO_PASSWORD_PROMPT");
     }
 
+    fchdir(rd);
+    if (exists("ssh-setup.sh")) {
+        copy_file("ssh-setup.sh", "/private/var/jb/usr/libexec/ssh-setup.sh", 0755);
+        const char *setup[] = { "/var/jb/usr/bin/dash", "/var/jb/usr/libexec/ssh-setup.sh", "init", NULL };
+        if (run(setup, 1) != 0) say("root password initialization failed; SSH keys are still available");
+    }
+    chdir("/");
+
     if (!exists("/var/jb/etc/ssh/ssh_host_ed25519_key")) {
         const char *kg[] = { "/var/jb/usr/bin/ssh-keygen", "-A", NULL };
         run(kg, 1);
@@ -248,7 +256,6 @@ int main(void) {
     } else ma_replace();
     mkdir("/private/var/jb/var/empty", 0755); mkdir("/private/var/jb/var/run", 0755);
     const char *sshd[] = { "/var/jb/usr/sbin/sshd", "-D", "-e", "-p", "22",
-                           "-o", "PermitRootLogin=prohibit-password", "-o", "PasswordAuthentication=no",
                            "-o", "PidFile=/var/jb/var/run/sshd.pid", NULL };
     for (int attempt = 0; attempt < 1000; attempt++) {
         int rc = run(sshd, 1);
