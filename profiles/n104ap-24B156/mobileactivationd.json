@@ -1,0 +1,67 @@
+[
+ {
+  "component": "mobileactivationd",
+  "evidence": [
+   "unique Objective-C selector should_hactivate",
+   "relative method entry resolves to 0x2ec4d0",
+   "two-instruction LDRB W0,[X0,#ivar] / RET getter"
+  ],
+  "id": "mobileactivationd.should-hactivate",
+  "offset": 3065040,
+  "originalBytes": "00544039",
+  "replacementBytes": "20008052",
+  "summary": "Make DeviceType report that hactivation is enabled"
+ },
+ {
+  "component": "mobileactivationd",
+  "evidence": [
+   "unique getActivationStateWithCompletionBlock: implementation at 0x32a34c",
+   "TBZ W22,#0 data-migration gate followed 0x60 bytes later by ADRP/ADD/LDR fallback load",
+   "unique 32-byte CFString object for Activated at 0x3f3868"
+  ],
+  "id": "mobileactivationd.activation-state.migration-gate",
+  "offset": 3318700,
+  "originalBytes": "76050036",
+  "replacementBytes": "1f2003d5",
+  "summary": "Do not skip activation-state reporting before migration completes"
+ },
+ {
+  "component": "mobileactivationd",
+  "evidence": [
+   "unique getActivationStateWithCompletionBlock: implementation at 0x32a34c",
+   "TBZ W22,#0 data-migration gate followed 0x60 bytes later by ADRP/ADD/LDR fallback load",
+   "unique 32-byte CFString object for Activated at 0x3f3868"
+  ],
+  "id": "mobileactivationd.activation-state.adrp",
+  "offset": 3318796,
+  "originalBytes": "280500f0",
+  "replacementBytes": "400600b0",
+  "summary": "Load the page containing the Activated CFString"
+ },
+ {
+  "component": "mobileactivationd",
+  "evidence": [
+   "unique getActivationStateWithCompletionBlock: implementation at 0x32a34c",
+   "TBZ W22,#0 data-migration gate followed 0x60 bytes later by ADRP/ADD/LDR fallback load",
+   "unique 32-byte CFString object for Activated at 0x3f3868"
+  ],
+  "id": "mobileactivationd.activation-state.add",
+  "offset": 3318800,
+  "originalBytes": "08010d91",
+  "replacementBytes": "00a02191",
+  "summary": "Materialize the Activated CFString address in X0"
+ },
+ {
+  "component": "mobileactivationd",
+  "evidence": [
+   "unique getActivationStateWithCompletionBlock: implementation at 0x32a34c",
+   "TBZ W22,#0 data-migration gate followed 0x60 bytes later by ADRP/ADD/LDR fallback load",
+   "unique 32-byte CFString object for Activated at 0x3f3868"
+  ],
+  "id": "mobileactivationd.activation-state.dereference",
+  "offset": 3318804,
+  "originalBytes": "000140f9",
+  "replacementBytes": "1f2003d5",
+  "summary": "Keep the CFString object address instead of dereferencing a state global"
+ }
+]

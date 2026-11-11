@@ -43,7 +43,7 @@ ldid -S"$J/jbloader.ents.plist" "$BOOT/jbloader"
 cc -target arm64e-apple-ios17.0 -isysroot "$SDK" -O2 -Wall -dynamiclib -fobjc-arc \
    "$J/hacthook.m" -framework Foundation -o "$BOOT/hacthook.dylib"
 ldid -S "$BOOT/hacthook.dylib"
-for t in bpexec lsimg hactpoke; do
+for t in bpexec lsimg hactpoke ssh-listener; do
   cc "${CF[@]}" "$J/$t.c" -o "$BOOT/$t"; ldid -S"$J/jbloader.ents.plist" "$BOOT/$t"
 done
 cc "${CF[@]}" -fobjc-arc -framework Foundation "$J/maactivate.m" -o "$BOOT/maactivate"
@@ -60,6 +60,8 @@ fat "$BOOT/obhook.dylib" obhook; ldid -S "$BOOT/obhook.dylib"
 # loads the container from /dev/disk1) with disk-device-access, like the stock restored_external and newfs_apfs
 cc "${CF[@]}" "$SRC/rdsetup.c" -framework CoreFoundation -framework IOKit -o "$SETUP/rdsetup"
 ldid -S"$SRC/rdsetup.ents.plist" "$SETUP/rdsetup"
+cc "${CF[@]}" "$SRC/rdsetup_usbrelay.c" -framework CoreFoundation -framework IOKit -o "$SETUP/rdsetup_usbrelay"
+ldid -S"$SRC/rdsetup_usbrelay.ents.plist" "$SETUP/rdsetup_usbrelay"
 # 2nd iOS volumes (developing feature): run on 2nd Data over SSH; newfs_apfs + APFSVolumeDelete need the same
 # disk-device-access entitlement as rdsetup
 cc "${CF[@]}" "$SRC/os2vol.c" -framework CoreFoundation -framework IOKit -o "$DEV/os2vol"

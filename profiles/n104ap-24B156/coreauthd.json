@@ -1,0 +1,15 @@
+[
+ {
+  "component": "coreauthd",
+  "evidence": [
+   "unique startController selector and Objective-C selector reference",
+   "optimized objc_msgSend selector stub at 0x3db80",
+   "unique BL caller followed by LDR X0,[SP,#8] at crash return address"
+  ],
+  "id": "coreauthd.dto-ratchet.start-controller",
+  "offset": 38340,
+  "originalBytes": "6fd10094",
+  "replacementBytes": "1f2003d5",
+  "summary": "Skip the SEP-dependent DTO ratchet controller startup"
+ }
+]

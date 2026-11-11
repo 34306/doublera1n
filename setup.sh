@@ -41,11 +41,27 @@ brew list --versions libusb >/dev/null 2>&1 || brew install libusb || fail "brew
 echo "   ${G}✓${N} libusb"
 # blacktop/ipsw: IPSW download, remote extraction of single components (pre-check), rootfs DMG decryption
 IPSW_MIN=3.1.700
+ipsw_version() {
+    local output
+    output=$(ipsw version 2>/dev/null) || return 1
+    printf '%s\n' "$output" | sed -n 's/^Version: *\([0-9][0-9.]*\).*/\1/p'
+}
+ipsw_version_supported() {
+    [ -n "$1" ] &&
+        [ "$(printf '%s\n%s\n' "$IPSW_MIN" "$1" | sort -V | head -1)" = "$IPSW_MIN" ]
+}
+
 command -v ipsw >/dev/null 2>&1 || brew install blacktop/tap/ipsw || fail "brew install blacktop/tap/ipsw"
-iv=$(ipsw version 2>/dev/null | sed -n 's/^Version: *\([0-9.]*\).*/\1/p')
-if [ "$(printf '%s\n%s\n' "$IPSW_MIN" "$iv" | sort -V | head -1)" != "$IPSW_MIN" ]; then
-    brew upgrade blacktop/tap/ipsw || fail "ipsw $iv is older than $IPSW_MIN: brew upgrade blacktop/tap/ipsw"
-    iv=$(ipsw version 2>/dev/null | sed -n 's/^Version: *\([0-9.]*\).*/\1/p')
+iv=$(ipsw_version)
+if ! ipsw_version_supported "$iv"; then
+    brew upgrade blacktop/tap/ipsw ||
+        fail "could not upgrade ipsw (${iv:-version unknown}). Need $IPSW_MIN or newer."
+    # Homebrew can upgrade a different copy than the one selected by PATH.
+    iv=$(ipsw_version)
+    if ! ipsw_version_supported "$iv"; then
+        ipsw_path=$(command -v ipsw)
+        fail "ipsw (${ipsw_path:-missing from PATH}) reports ${iv:-an unknown version}. Need $IPSW_MIN or newer. Check your PATH."
+    fi
 fi
 echo "   ${G}✓${N} ipsw $iv"
 
