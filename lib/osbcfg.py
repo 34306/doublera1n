@@ -69,6 +69,7 @@ _LEGACY = {  # 24B119 / d421ap names, used when the IPSW dir has no BuildManifes
     'RestoreRamDisk': '141-10399-240.dmg',
     'RestoreTrustCache': 'Firmware/141-10399-240.dmg.trustcache',
     'RestoreSEP': 'Firmware/all_flash/sep-firmware.d421.RELEASE.im4p',
+    'RestoreLogo': 'Firmware/all_flash/applelogo@3x~iphone.im4p',
 }
 
 def _identity():

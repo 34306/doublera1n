@@ -10,12 +10,13 @@ JB = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import osbcfg
 IPSW = osbcfg.IPSW
+MODE = (sys.argv[1] if len(sys.argv) > 1 else 'install')
 OUT = osbcfg.work('chain')
-MIN_IBOOT = osbcfg.out('iBoot.min.raw')   # patch_iboot.py --no-fsboot "--boot-args=rd=md0 -v wdt=-1 serial=3 debug=0x2014e"
+SETUP_IBSS = osbcfg.out('iBSS.setup.raw')
+SETUP_IBEC = osbcfg.out('iBEC.setup.raw')
 TICKET = IM4M(open(osbcfg.out('apticket.im4m'), 'rb').read())
-MODE = (sys.argv[1] if len(sys.argv) > 1 else 'install')   # setup ramdisk variant (mk_setuprd.py)
 
-FIRMWARE = osbcfg.firmware()   # (file in IPSW, output, fourcc) - restore order, RestoreLogo skipped
+FIRMWARE = [item for item in osbcfg.firmware() if item[1] != 'StaticTrustCache.img4']
 
 def sign(im4p: IM4P, out: str):
     open(os.path.join(OUT, out), 'wb').write(IMG4(im4p=im4p, im4m=TICKET).output())
@@ -27,11 +28,15 @@ def main():
         p = IM4P(open(os.path.join(IPSW, src), 'rb').read())
         if fourcc: p.fourcc = fourcc
         sign(p, out)
-    # iBEC = Apple's iBEC im4p (LZFSE, description kept) with the payload swapped for the minimal patched
-    # iBoot (validate + boot-args only, no hooks), repacked as an im4p. That iBoot is built from iBSS,
-    # whose payload is identical to iBEC's (verified on 27.2 / 24B119).
+    stale_tc = os.path.join(OUT, 'StaticTrustCache.img4')
+    if os.path.exists(stale_tc):
+        os.remove(stale_tc)
+    if osbcfg.has('RestoreLogo') and os.path.isfile(osbcfg.ipsw('RestoreLogo')):
+        logo = IM4P(open(osbcfg.ipsw('RestoreLogo'), 'rb').read())
+        logo.fourcc = 'rlgo'
+        sign(logo, 'RestoreLogo.img4')
     ibec = IM4P(open(osbcfg.ipsw('iBEC'), 'rb').read())
-    ibec.payload = IM4PData(open(MIN_IBOOT, 'rb').read())
+    ibec.payload = IM4PData(open(SETUP_IBEC, 'rb').read())
     ibec.payload.compress(Compression.LZFSE)
     sign(ibec, 'iBEC.img4')
     # DeviceTree without /defaults/content-protect (restore DeviceTree edits), fourcc rdtr
@@ -45,7 +50,7 @@ def main():
     shutil.copy2(osbcfg.out('rsep.img4'), os.path.join(OUT, 'SEP.img4'))
     shutil.copy2(osbcfg.work(f'setuptc-{MODE}.img4'), os.path.join(OUT, 'RestoreTrustCache.img4'))
     shutil.copy2(osbcfg.work(f'setuprd-{MODE}.img4'), os.path.join(OUT, 'RestoreRamdisk.img4'))
-    shutil.copy2(MIN_IBOOT, os.path.join(OUT, 'iBSS.raw'))
+    shutil.copy2(SETUP_IBSS, os.path.join(OUT, 'iBSS.raw'))
     print("SEP/RestoreTrustCache/RestoreRamdisk/iBSS.raw copied")
 
 if __name__ == '__main__':

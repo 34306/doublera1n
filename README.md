@@ -91,3 +91,39 @@ TSS: if Apple doesn't sign the build anymore (old builds, betas), the newest sig
 
 ## License
 doublera1n is MIT, see [LICENSE](LICENSE). Some parts keep their own license.
+
+## Waveshare RP2350-USB-A
+
+![Waveshare RP2350-USB-A](https://www.waveshare.com/media/catalog/product/cache/1/image/800x800/9df78eab33525d08d6e5fb8d27136e95/r/p/rp2350-usb-a-1_1.jpg)
+
+Confirmed on **iPhone 11 (`n104ap`), iOS 27.2.1 (`24B156`)**: setup, jailbroken boot, Sileo provisioning and USB pairing completed successfully. Use the [Waveshare RP2350-USB-A](https://www.waveshare.com/wiki/RP2350-USB-A) and a Lightning-to-USB-A data cable.
+
+1. Download [usbliter8.waveshare_rp2350_usb_a.uf2](https://github.com/JoshAtticus/usbliter8/releases/download/rp2350/usbliter8.waveshare_rp2350_usb_a.uf2) from the [RP2350 firmware release](https://github.com/JoshAtticus/usbliter8/releases/tag/rp2350).
+2. Hold the board's **BOOT** button while connecting its USB-C port to the Mac. Release BOOT when a USB drive appears, then copy the `.uf2` file onto that drive. The board restarts, briefly blinks orange, then stays **orange: ready**. Flashing is only needed once.
+3. Connect the iPhone directly to the Mac, unlock it and accept Trust. In this repository, run `./boot.sh`. Mac dependencies and firmware downloads are handled automatically.
+4. When asked for pwned DFU, leave that command running. In another terminal in this repository, run `./boot.sh --dfu-guide`. It enters Recovery and guides the button timing into DFU.
+5. Keep the board powered through USB-C. Connect the DFU iPhone to its USB-A port. **Blue** means the exploit is running; **steady green** means it succeeded. If it turns red, reset the board and retry from DFU.
+6. Move the iPhone's cable back to the Mac. The running command continues automatically over USB.
+7. The first installation asks for pwned DFU a second time. Force-restart the iPhone into stock iOS, reset the board to orange, and repeat steps 4–6. Keep the original command running until it prints **DONE**, then finish Setup on the phone.
+
+Reset or unplug/reconnect the board before each exploit attempt; you do not need to copy the firmware again. The [usbliter8 instructions](https://github.com/JoshAtticus/usbliter8#exploiting) describe the LED states. A normal iPhone reboot returns to stock iOS. To boot the jailbreak again, enter DFU, use the board until it turns green, reconnect to the Mac and run `./boot.sh`.
+
+The original setup read its completion log and installed APTicket through the iPhone's UART. This board exposes exploit logs instead. The setup ramdisk now starts USB communication through CoreFoundation and IOKit, runs the original installer, and returns its real log and ticket directly to the Mac. The Mac checks the result and device identity before continuing. We also corrected the iBSS handoff, built iBSS and iBEC separately, left display initialization to iBEC on iPhone 11, placed boot arguments in verified padding, and loaded the restore trust cache.
+
+This is the default `./boot.sh` workflow. The signed USB relay is included. `--dfu-guide` helps with the button timing, and `probe` checks the relay connection before setup.
+
+### Test the relay before setup
+
+Build the relay with `bash src/build_usbrelay.sh` on a Mac with the iPhoneOS SDK and `ldid`. Then run `./boot.sh probe --build <build> --ipsw <path-to-ipsw>` with the target phone in pwned DFU. The probe uses a separate workspace and a ramdisk that omits the `rdsetup` installer. A successful handshake prints `USB relay probe passed`. Reboot into stock iOS before running setup.
+
+Relay connections are selected by the target ECID and operation. Setup tickets are requested for the current DFU session and checked against its nonce, the selected board, and the RestoreSEP image. Received setup transcripts are saved as private host files while the command runs, including snapshots received before a later failure.
+
+The additional probe and ticket checks were also tested by XeDoX-dev on **iPhone 11 Pro (`d421ap`), iOS 27.0 beta 3 (`24A5380h`)**, using a Waveshare RP2350-USB-A and macOS 14.8.7. The relay probe, installation, second Data boot, SSH, Sileo source refresh and a TrollStore Lite installation succeeded. This is one device report, not a compatibility claim for every model or build. The USB setup implementation and original Waveshare workflow are by [Antonio Zekic](https://github.com/antoniozekic/doublera1n); these probe, ticket and diagnostic improvements build on that work.
+
+Finish Setup using Wi-Fi and choose to set up Apple Account later. iCloud sign-in is unavailable while SEP is disabled. On this test device, Setup initially looped even after choosing to skip sign-in. Manually setting `SetupDone` and `SetupFinishedAllSteps` to true in the second Data volume's `com.apple.purplebuddy.plist`, then restarting the preferences daemon and interface, allowed the user to skip sign-in and reach the Home Screen. This workaround has only been reported on that device and is not applied automatically by the installer.
+
+The same Mac could not mount the decrypted beta root filesystem with `hdiutil` (`no mountable file systems`). Installation reused a previously extracted rootfs cache after checking its BuildManifest board/build and required files. The mount problem is still unresolved; the successful boot does not establish that a clean installation on macOS 14 can extract this rootfs.
+
+Downloads, extracted firmware, tickets, SSH keys and logs now live in **`dualboot-work/` inside the repository**, ignored by Git. `DUALBOOT_HOME` still overrides that location.
+
+**SSH:** new installations initialize **`root` / `alpine`** once. Existing passwords are preserved, and key login through `./boot.sh ssh` still works. For a manual USB connection, run `iproxy 2222 22` on the Mac, then `ssh -p 2222 root@localhost` in another terminal. Change the shared default password with `passwd root` before allowing network access. The tool now stops the SSH forwards it starts when its command exits; a manually started `iproxy` stays under your control.

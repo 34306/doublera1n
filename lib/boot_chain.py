@@ -3,23 +3,24 @@
 usbliter8ctl boot iBSS.raw -> iBEC.img4 + go -> firmware... -> ramdisk -> devicetree -> rsepfirmware
 -> kernel -> bootx.  Unlike `irecovery -c`, every command is sent with a control transfer whose STALL
 (= iBoot rejected the command) is detected; the chain stops before bootx on any failure."""
-import os, subprocess, sys, time
+import os, re, subprocess, sys, time
 import usb.core
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 JB = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import osbcfg
+from ibss_handoff import boot_ibss
 OSBJB = '--osbjb' in sys.argv   # OS B + jailbreak ramdisk (jbinit as PID 1, jb=md0)
 OSB = '--osb' in sys.argv or OSBJB
 RESUME = '--resume' in sys.argv   # OS B normal boot instead of the setup ramdisk
+SETUP = not OSB
 C = osbcfg.work('osbjb' if OSBJB else 'osb' if OSB else 'chain')
 CTL = os.environ.get('USBLITER8CTL') or os.path.join(JB, 'tools/usbliter8ctl')
 FIRMWARE = [('ANE.img4', 0), ('AOP.img4', 0), ('AVE.img4', 1), ('SPTM.img4', 3), ('TXM.img4', 0),
-            ('GFX.img4', 0), ('ISP.img4', 1), ('PMP.img4', 0), ('StaticTrustCache.img4', 0),
+            ('GFX.img4', 0), ('ISP.img4', 1), ('PMP.img4', 0),
             ('RestoreTrustCache.img4', 0), ('SIO.img4', 0), ('WCH.img4', 0)]
 OPTIONAL = {'WCH.img4'}             # wireless-charging firmware: iPads have none
-if OSB: FIRMWARE = [f for f in FIRMWARE if f[0] != 'StaticTrustCache.img4']   # System TC sent as rtsc (mk_osb.py)
 
 def recovery(timeout=40, hint=''):
     """a Recovery device whose string descriptors answer (a half-torn-down one after `go` does not)"""
@@ -68,6 +69,8 @@ def send(name, c, pause=0):
     if pause: time.sleep(pause)
 
 def main():
+    if SETUP and not os.path.isfile(os.path.join(C, 'RestoreLogo.img4')):
+        sys.exit('!! setup logo missing; rebuild the setup chain from its IPSW before booting')
     out = subprocess.run(['irecovery', '-q'], capture_output=True, text=True).stdout
     if RESUME:                           # iBEC already up (an earlier run died after [2]): continue from firmware
         if 'NONC:' not in out or 'PWND' in out: sys.exit("--resume needs the device sitting in iBEC")
@@ -77,23 +80,32 @@ def main():
     print("[1] iBSS (raw)", flush=True)
     # this interpreter (.venv), not `python3` from PATH: setup.sh installs pyusb only into .venv, and a PATH
     # python3 without it dies on `import usb` before sending anything
-    r = subprocess.run([sys.executable, CTL, 'boot', os.path.join(C, 'iBSS.raw')], capture_output=True, text=True)
-    # its last request may fail while iBSS takes USB over: shown only if no Recovery device follows
-    recovery(hint=f"usbliter8ctl exit {r.returncode}: {(r.stderr or r.stdout).strip()[-400:]}" if r.returncode else '')
+    ecid = re.search(r'(?m)^ECID:\s*(0x[0-9a-fA-F]+)', out)
+    if not ecid:
+        sys.exit('!! could not read the pwned iPhone ECID; stopping before iBSS')
+    try:
+        boot_ibss([sys.executable, '-u', CTL, 'boot', os.path.join(C, 'iBSS.raw')],
+                  ecid[1], osbcfg.work('ibss-handoff.log'))
+    except RuntimeError as exc:
+        sys.exit(f'!! {exc}')
     time.sleep(3)
     print("[2] iBEC + go", flush=True)
     upload('iBEC.img4')
     # `irecovery -c go` (libirecovery ignores the status-stage timeout of the
     # hand-off), then leave the device alone for 2 s instead of polling it while iBSS tears USB down
-    subprocess.run(['irecovery', '-c', 'go'], capture_output=True, text=True)
+    handoff = subprocess.run(['irecovery', '-c', 'go'], capture_output=True, text=True)
+    if handoff.returncode:
+        sys.exit(f"!! could not send go: {(handoff.stderr or handoff.stdout).strip()[-200:]}")
     time.sleep(2)
-    print(f"   iBSS left USB: {gone()}", flush=True)
-    recovery(60); time.sleep(2)
-    print("   iBEC is up", flush=True)
-    # bring the display up in iBEC so the kernel gets a framebuffer and -v is visible
+    disconnected = gone()
+    usb.util.dispose_resources(recovery(60)); time.sleep(2)
+    print("   Recovery responds after go; USB disconnect " +
+          ("observed" if disconnected else "not observed"), flush=True)
     d = recovery()
+    color = 'bgcolor 0 191 255' if SETUP else 'bgcolor 0 0 0'
     try:
-        d.ctrl_transfer(0x40, 0, 0, 0, b'bgcolor 0 0 0\0', 30000); print("   bgcolor 0 0 0      ok", flush=True)
+        d.ctrl_transfer(0x40, 0, 0, 0, color.encode() + b'\0', 30000)
+        print(f"   {color}      ok", flush=True)
     except usb.core.USBError as e:
         print(f"   bgcolor rejected ({e}) - continuing", flush=True)
     finally:
@@ -101,6 +113,8 @@ def main():
     stages_from_firmware()
 
 def stages_from_firmware():
+    if not OSB and os.path.isfile(os.path.join(C, 'RestoreLogo.img4')):
+        send('RestoreLogo.img4', 'setpicture 0x1')
     print("[3] firmware", flush=True)
     for name, pause in FIRMWARE:
         if name in OPTIONAL and not os.path.exists(os.path.join(C, name)):
@@ -117,7 +131,10 @@ def stages_from_firmware():
     print(" - Kernelcache.img4", flush=True); upload('Kernelcache.img4')
     print("[6] bootx", flush=True)
     usb.util.dispose_resources(recovery(10))
-    subprocess.run(['irecovery', '-c', 'bootx'], capture_output=True, text=True)
+    bootx = subprocess.run(['irecovery', '-c', 'bootx'], capture_output=True, text=True)
+    if bootx.returncode:
+        print(f"   bootx command returned {bootx.returncode}: "
+              f"{(bootx.stderr or bootx.stdout).strip()[-200:]}", flush=True)
     time.sleep(10)
     d = usb.core.find(idVendor=0x05ac, idProduct=0x1281)
     if d:
@@ -127,7 +144,8 @@ def stages_from_firmware():
             back = False
         usb.util.dispose_resources(d)
         if back: sys.exit("!! bootx returned to the Recovery prompt - iBoot rejected the boot (see UART hash lines)")
-    print("[+] chain sent - " + ("2nd Data booting, watch UART" if OSB else "watch [rdsetup] lines on screen / UART"), flush=True)
+    print("[+] iBEC left Recovery after bootx; " +
+          ("2nd Data boot is not yet verified" if OSB else "ramdisk boot is not yet verified"), flush=True)
 
 if __name__ == '__main__':
     main()

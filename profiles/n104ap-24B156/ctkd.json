@@ -1,0 +1,28 @@
+[
+ {
+  "component": "ctkd",
+  "evidence": [
+   "unique Objective-C selector serverAttributesOfKey:error:",
+   "relative method entry at 0x26710 resolves to 0x1b38",
+   "RETAB / PACIBSP / SUB SP,SP entry boundary"
+  ],
+  "id": "ctkd.sep-key-server.return-nil",
+  "offset": 6968,
+  "originalBytes": "7f2303d5",
+  "replacementBytes": "000080d2",
+  "summary": "Return nil from serverAttributesOfKey:error:"
+ },
+ {
+  "component": "ctkd",
+  "evidence": [
+   "unique Objective-C selector serverAttributesOfKey:error:",
+   "relative method entry at 0x26710 resolves to 0x1b38",
+   "RETAB / PACIBSP / SUB SP,SP entry boundary"
+  ],
+  "id": "ctkd.sep-key-server.return",
+  "offset": 6972,
+  "originalBytes": "ff0303d1",
+  "replacementBytes": "c0035fd6",
+  "summary": "Return before entering the SEP-backed method body"
+ }
+]
