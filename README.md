@@ -83,6 +83,19 @@ TSS: if Apple doesn't sign the build anymore (old builds, betas), the newest sig
 
 ![B4 PICO DFU board (RP2350, Lightning plug + USB-C): pwned DFU and UART over the Lightning port](pico_uart.jpg)
 
+## How to PWN iPad 9th?
+
+Open the patch.c file in the usbliter source code of t8030_shellcode and add the patches, then recompile
+
+   ```
+    SET32(ROM_NEW_PA + 0x763C, NOP);
+    SET32(ROM_NEW_PA + 0x7644, 0x52800008); // mov w8, #0
+    SET32(ROM_NEW_PA + 0x766C, NOP);
+    SET32(ROM_NEW_PA + 0x795C, NOP);
+   ```
+
+
+
 ## Credits
 - [usbliter8-fun by wh1te4ever](https://github.com/wh1te4ever/usbliter8-fun)
 - [usbliter8]() (got deleted)
