@@ -50,9 +50,9 @@ fi
 echo "   ${G}✓${N} ipsw $iv"
 
 step "Python environment (.venv)"
-# Use brew python3 if available, otherwise system python3
-PYB=$(brew --prefix 2>/dev/null)/bin/python3
-[ -x "$PYB" ] || PYB=$(command -v python3)
+# Use python3 from PATH first (or brew python3)
+PYB=$(command -v python3)
+[ -x "$PYB" ] || PYB=$(brew --prefix 2>/dev/null)/bin/python3
 [ -d .venv ] || "$PYB" -m venv .venv || fail "could not create .venv"
 .venv/bin/python3 -m pip install -q --upgrade pip
 .venv/bin/python3 -m pip install -q -r requirements.txt || fail "pip install -r requirements.txt"
