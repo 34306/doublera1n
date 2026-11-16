@@ -92,7 +92,7 @@ header() {
 }
 
 version_line() {
-    local f="${DUALBOOT_HOME:-$HOME/dualboot-work}/selected-version.json" v b
+    local f="${DUALBOOT_HOME:-$PWD/dualboot-work}/selected-version.json" v b
     if [ -f "$f" ]; then
         v=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$f"); b=$(sed -n 's/.*"build": *"\([^"]*\)".*/\1/p' "$f")
         echo "${C_OK}iOS version: $v ($b)${C_RESET}"

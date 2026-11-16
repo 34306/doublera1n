@@ -98,6 +98,22 @@ def patch_validate(d, log):
     log.append(f"validate      @0x{off:x}: b.ne -> nop ; mov x0,x20 -> mov x0,#0")
 
 # ---------------------------------------------------------------- 2. boot-args
+def bootargs_slot(d, size):
+    if len(d) < 0x3a0:
+        raise SystemExit('bootargs: truncated mBoot header')
+    base, content_end, data_start = (u64(d, off) for off in (0x380, 0x390, 0x398))
+    if (base & 0xFFF or data_start & 0xFFF or
+            not base + 0x1000 <= content_end < data_start <= base + len(d)):
+        raise SystemExit('bootargs: invalid read-only/data boundaries in mBoot header')
+    lo, hi = content_end - base, data_start - base
+    if any(d[lo:hi]):
+        raise SystemExit('bootargs: read-only/data alignment gap is not empty')
+    slot = (hi - size - 16) & ~0xF
+    if size < 1 or slot < lo + 16:
+        raise SystemExit('bootargs: no room in read-only/data alignment gap')
+    return slot
+
+
 def patch_bootargs(d, args, log):
     # the original format is "%s" whose argument is iBoot's own dynamic part ("rd=md0[ -progress][ -restore]"
     # when a ramdisk is loaded, else empty) -> keep it in front so ramdisk boots still get rd=md0.
@@ -118,24 +134,50 @@ def patch_bootargs(d, args, log):
             sites.append(off)
     if len(sites) != 1: raise SystemExit(f"bootargs: sites {list(map(hex, sites))}")
     site = sites[0]
-    # find a zero run at the tail of a 4K page in __TEXT cstring/const area (before data)
-    need = len(lit) + 16
-    text_end = _layout.TEXT_END  # file offset where data starts (from the iBoot header)
-    slot = None
-    for page_end in range(0x1000, text_end + 1, 0x1000):
-        start = page_end - need
-        if start < 0x1000: continue
-        if d[start:page_end] == b"\0" * need:
-            # make sure the zero run really extends (padding, not a string terminator run)
-            slot = (start + 0xF) & ~0xF
-            if slot + len(lit) <= page_end: break
-            slot = None
-    if slot is None: raise SystemExit("bootargs: no slot")
+    slot = bootargs_slot(d, len(lit))
     p32(d, site, enc_adrp(2, site, slot))
     p32(d, site + 4, enc_add_imm(2, 2, slot & 0xFFF))
     d[slot:slot + len(lit)] = lit
-    log.append(f"boot-args     @0x{site:x}: format -> 0x{slot:x} \"{args}\"")
+    log.append(f"boot-args     @0x{site:x}: format -> 0x{slot:x} (header alignment padding) \"{args}\"")
     return slot
+
+def patch_ibss_skip_display_init(d, log):
+    end = min(_layout.TEXT_END, len(d))
+    candidates = []
+    for off in range(0x20, end - 36, 4):
+        if u32(d, off) >> 26 != 0x25 or u32(d, off + 4) >> 26 != 0x25:
+            continue
+        cbz = u32(d, off + 8)
+        if cbz & 0xFF00001F != 0x34000000:
+            continue
+        if u32(d, off - 8) != 0x52800E20 or u32(d, off - 4) != 0x52800021:
+            continue
+        load, branch = u32(d, off - 16), u32(d, off - 12)
+        store = u32(d, off + 16)
+        if load & 0xFFC003FF != 0x39400288 or store & 0xFFC003FF != 0x39000288:
+            continue
+        if (load >> 10) & 0xFFF != (store >> 10) & 0xFFF:
+            continue
+        if branch & 0xFFF8001F != 0x37000008:
+            continue
+        target = off - 12 + ((((branch >> 5) & 0x3FFF) ^ 0x2000) - 0x2000) * 4
+        if target != off + 12:
+            continue
+        if (u32(d, off + 12), u32(d, off + 20), u32(d, off + 32)) != (0x52800028, 0x52800000, 0xD65F0FFF):
+            continue
+        initialized = off + 8 + ((((cbz >> 5) & 0x7FFFF) ^ 0x40000) - 0x40000) * 4
+        if not (max(0, off - 0x100) <= initialized < off - 16) or u32(d, initialized) != 0x52800028:
+            continue
+        callees = [site + (((u32(d, site) & 0x3FFFFFF) ^ 0x2000000) - 0x2000000) * 4
+                   for site in (off, off + 4)]
+        if any(not 0 <= callee < end - 4 for callee in callees):
+            continue
+        candidates.append(off + 4)
+    if len(candidates) != 1:
+        raise SystemExit(f"iBSS display handoff: expected one guarded call, found {list(map(hex, candidates))}")
+    site = candidates[0]
+    p32(d, site, 0x52800020)
+    log.append(f"iBSS display  @0x{site:x}: skip initialization; iBEC owns the display")
 
 # ---------------------------------------------------------------- 3. memboot -> fsboot
 def find_cmd_entry(d, name, table_lo, table_hi):
@@ -236,6 +278,8 @@ def main():
     ap.add_argument("inp"); ap.add_argument("out")
     ap.add_argument("--boot-args", default="-v serial=3 debug=0x2014e wdt=-1")
     ap.add_argument("--no-fsboot", action="store_true")
+    ap.add_argument("--ibss-skip-display-init", action="store_true",
+                    help="n104 iBSS display handoff; never apply to iBEC")
     ap.add_argument("--local", action="store_true", help="force local-boot behaviour (NVRAM, auto-boot)")
     ap.add_argument("--clear-remote", action="store_true", help="also clear the remote-boot bit in hardware")
     ap.add_argument("--no-autoboot", action="store_true", help="never auto-boot; stay at recovery console")
@@ -260,6 +304,8 @@ def main():
     log = []
     patch_validate(d, log)
     slot = patch_bootargs(d, a.boot_args, log)
+    if a.ibss_skip_display_init:
+        patch_ibss_skip_display_init(d, log)
     if not a.no_fsboot: patch_fsboot_cmd(d, log)
     if a.local and not a.clear_remote: patch_local_boot(d, log)
     if a.no_autoboot: patch_no_autoboot(d, log)
