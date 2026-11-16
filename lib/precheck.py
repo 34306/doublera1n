@@ -26,8 +26,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import kpf, mkprofile, dt_patch
+from workpaths import WORKROOT
 
-WORKROOT = os.environ.get('DUALBOOT_HOME') or os.path.expanduser('~/dualboot-work')
 PROFILES = os.path.join(ROOT, 'profiles')
 IPSW_MIN = (3, 1, 700)            # `ipsw extract --remote --pattern` as tested with this tool
 COMPONENTS = ['KernelCache', 'Ap,TrustedExecutionMonitor', 'iBSS', 'iBEC', 'DeviceTree']
@@ -236,6 +236,7 @@ def main():
             rin, rout = os.path.join(tmp, key + '.raw'), os.path.join(tmp, key + '.patched')
             open(rin, 'wb').write(raw_of(comp[key]))
             r = subprocess.run([sys.executable, os.path.join(HERE, 'patch_iboot.py'), '--no-fsboot',
+                                *(['--ibss-skip-display-init'] if key == 'iBSS' and board == 'n104ap' else []),
                                 f'--boot-args={args}', rin, rout], capture_output=True, text=True)
             if r.returncode: bad('iBoot', f"{key}: {(r.stdout + r.stderr).strip().splitlines()[-1]}")
             else: ok('iBoot', f"{key}: " + "; ".join(l.split('@')[0].strip() for l in r.stdout.strip().splitlines()))

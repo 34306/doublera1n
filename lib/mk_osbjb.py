@@ -36,11 +36,11 @@ B = osbcfg.work('jbrd')                                   # intermediate dir
 PREBUILT = os.environ.get('OSB_PREBUILT') or os.path.join(JB, 'payload/boot')
 BOOTARGS = "jb=md0 -v serial=3 debug=0x2014e launchd_unsecure_cache=1 wdt=-1"
 SSHKEY = osbcfg.out('osb_ssh/id_ed25519')
-TOOLS = ('launchctl', 'bpexec', 'lsimg', 'hactpoke', 'maactivate', 'mobileactivationd')
+TOOLS = ('launchctl', 'bpexec', 'lsimg', 'hactpoke', 'maactivate', 'mobileactivationd', 'ssh-listener')
 # mobileactivationd with its userland patch records applied to the stock binary (mkdaemon.py), original ents/id
 MOBILEACTIVATIOND = osbcfg.work('daemons/mobileactivationd')
 PREBUILT_FILES = ('dyld', 'launchd', 'jbloader', 'hacthook.dylib', 'launchctl', 'bpexec', 'lsimg',
-                  'hactpoke', 'maactivate', 'obhook.dylib', 'bootstrap.tar.gz')
+                  'hactpoke', 'maactivate', 'obhook.dylib', 'bootstrap.tar.gz', 'ssh-listener')
 
 def sign(p, out):
     open(os.path.join(OUT, out), 'wb').write(IMG4(im4p=p, im4m=mk_osb.TICKET).output())
@@ -121,6 +121,7 @@ def build_ramdisk():
     shutil.copy2(os.path.join(B, 'obhook.dylib'), os.path.join(root, 'jbin/obhook.dylib'))   # -> /cores/obhook.dylib (bindfs)
     for n in TOOLS: shutil.copy2(os.path.join(B, n), os.path.join(root, 'jbin', n)); os.chmod(os.path.join(root, 'jbin', n), 0o755)
     shutil.copy2(os.path.join(B, 'bootstrap.tar.gz'), os.path.join(root, 'jbin/bootstrap.tar.gz'))
+    shutil.copy2(os.path.join(JB, 'device/ssh-setup.sh'), os.path.join(root, 'jbin/ssh-setup.sh'))
     shutil.copy2(SSHKEY + '.pub', os.path.join(root, 'jbin/authorized_keys'))
     if osbcfg.OS2:
         import re

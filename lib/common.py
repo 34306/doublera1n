@@ -1,5 +1,6 @@
 """Shared helpers for dualboot.py: host checks, device (irecovery/usb) detection, workspace, serial capture, ssh."""
-import glob, json, os, select, shutil, subprocess, sys, termios, time
+import atexit, glob, json, os, re, select, shutil, subprocess, sys, tempfile, termios, time
+from workpaths import WORKROOT
 
 LIB = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(LIB)                      # the dualboot/ folder
@@ -7,7 +8,6 @@ DUALBOOT = LIB                                   # build/boot scripts live next 
 PROFILES = os.path.join(ROOT, 'profiles')
 PAYLOAD = os.path.join(ROOT, 'payload')
 DEVICE = os.path.join(ROOT, 'device')            # scripts installed on the phone
-WORKROOT = os.environ.get('DUALBOOT_HOME') or os.path.expanduser('~/dualboot-work')
 USBLITER8CTL = os.environ.get('USBLITER8CTL') or os.path.join(ROOT, 'tools/usbliter8ctl')
 
 # ----------------------------------------------------------------------------------------------- output
@@ -142,8 +142,6 @@ def find_profile(board, build):
 
 # ----------------------------------------------------------------------------------------------- workspace
 class Workspace:
-    """~/dualboot-work/<ECID>-<build>: everything device-specific (tickets, builds, ssh key, logs).
-    prefix 'os2-' = the 2nd iOS (developing feature), see dualboot.py OS2Workspace."""
     def __init__(self, ecid, profile, prefix=''):
         self.ecid = ecid.lower().replace('0x', '').zfill(16)
         self.profile = profile
@@ -160,6 +158,7 @@ class Workspace:
         e = dict(os.environ)
         e.update(OSB_WORK=self.p('build'), OSB_OUT=self.p('out'), OSB_IPSW=self.p('build/ipsw'),
                  OSB_PROFILE=self.profile['dir'], OSB_BOARD=self.profile['board'],
+                 OSB_SETUP_ECID=self.ecid,
                  OSB_TICKET=self.p('out/apticket.installed.der'), OSB_ROOTFS=self.p('rootfs'),
                  OSB_PREBUILT=os.path.join(PAYLOAD, 'boot'), USBLITER8CTL=USBLITER8CTL)
         e.update({k: str(v) for k, v in extra.items()})
@@ -227,6 +226,25 @@ class Serial:
 
 # ----------------------------------------------------------------------------------------------- ssh
 SSH_PORT = int(os.environ.get('OSB_SSH_PORT', '2222'))
+_SSH_PROXIES = {}
+
+
+def close_ssh_proxies():
+    while _SSH_PROXIES:
+        _, (process, errors) = _SSH_PROXIES.popitem()
+        try:
+            if process.poll() is None:
+                process.terminate()
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=3)
+        finally:
+            errors.close()
+
+
+atexit.register(close_ssh_proxies)
 
 class SSH:
     def __init__(self, ws, udid):
@@ -234,11 +252,36 @@ class SSH:
         self.key = ws.p('out/osb_ssh/id_ed25519')
 
     def _iproxy(self):
-        if subprocess.run(['pgrep', '-f', f'iproxy -u {self.udid} {SSH_PORT} 22'], capture_output=True).returncode:
-            subprocess.run(['pkill', '-f', f'iproxy.* {SSH_PORT} 22'], capture_output=True)
-            subprocess.Popen(['iproxy', '-u', self.udid, str(SSH_PORT), '22'],
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            time.sleep(1)
+        key = (self.udid, SSH_PORT)
+        owned = _SSH_PROXIES.get(key)
+        if owned is not None:
+            process, errors = owned
+            if process.poll() is None:
+                return
+            process.wait()
+            errors.close()
+            del _SSH_PROXIES[key]
+        pattern = rf'(^|/)iproxy -u {re.escape(self.udid)} (-s 127\.0\.0\.1 )?{SSH_PORT}:22$'
+        if subprocess.run(['pgrep', '-f', pattern], capture_output=True).returncode == 0:
+            return
+        errors = tempfile.TemporaryFile()
+        try:
+            process = subprocess.Popen(['iproxy', '-u', self.udid, '-s', '127.0.0.1', f'{SSH_PORT}:22'],
+                                       stdout=subprocess.DEVNULL, stderr=errors)
+        except BaseException:
+            errors.close()
+            raise
+        _SSH_PROXIES[key] = (process, errors)
+        try:
+            process.wait(timeout=0.5)
+        except subprocess.TimeoutExpired:
+            return
+        errors.seek(0)
+        message = errors.read().decode('utf-8', 'replace')[-1000:].strip()
+        errors.close()
+        del _SSH_PROXIES[key]
+        die(f'iproxy could not start on port {SSH_PORT}: {message or "process exited"}.\n'
+            f'    Check the listener with: lsof -nP -iTCP:{SSH_PORT} -sTCP:LISTEN')
 
     def _base(self):
         return ['-i', self.key, '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null',
