@@ -174,10 +174,16 @@ SERIAL_GLOB = os.environ.get('OSB_SERIAL') or '/dev/cu.usbmodem*'
 class Serial:
     """Raw 115200 8N1 reader for the pwned-DFU board's UART bridge; reconnects if the board re-enumerates."""
     def __init__(self, logpath):
-        self.log = open(logpath, 'ab', buffering=0); self.fd = None; self.buf = b''
+        self.logpath = logpath
+        self.source = SERIAL_GLOB
+        self.log = open(logpath, 'ab', buffering=0)
+        self.fd = None
+        self.buf = b''
 
-    def _open(self):
+    def _open(self, fresh=False):
+        errors = []
         for port in sorted(glob.glob(SERIAL_GLOB)):
+            fd = None
             try:
                 fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
                 a = termios.tcgetattr(fd)
@@ -185,15 +191,27 @@ class Serial:
                 a[2] = termios.CS8 | termios.CREAD | termios.CLOCAL
                 a[4] = a[5] = termios.B115200
                 termios.tcsetattr(fd, termios.TCSANOW, a)
-                self.fd, self.port = fd, port
-                self.log.write(f"\n==== dualboot serial open {port} {time.ctime()} ====\n".encode())
-                return True
-            except OSError:
-                pass
+                if fresh:
+                    termios.tcflush(fd, termios.TCIFLUSH)
+            except (OSError, termios.error) as error:
+                if fd is not None:
+                    os.close(fd)
+                errors.append(f"{port} ({error})")
+                continue
+            self.fd, self.port, self.source = fd, port, port
+            self.log.write(f"\n==== dualboot serial open {port} {time.ctime()} ====\n".encode())
+            return True
+        self.open_error = ', '.join(errors) or f"no serial port matches {SERIAL_GLOB}"
         return False
 
     def available(self):
         return bool(glob.glob(SERIAL_GLOB))
+
+    def close(self):
+        if self.fd is not None:
+            os.close(self.fd)
+            self.fd = None
+        self.log.close()
 
     def pump(self, secs=1.0):
         """Read for up to secs; returns the new bytes."""
@@ -207,7 +225,9 @@ class Serial:
                     raise OSError('eof')
                 self.log.write(d); self.buf += d
                 return d
-        except (OSError, BlockingIOError):
+        except BlockingIOError:
+            return b''
+        except OSError:
             try: os.close(self.fd)
             except OSError: pass
             self.fd = None
@@ -279,9 +299,12 @@ class SerialFileTail:
     """Same interface as Serial, but follows a log file another UART logger is writing (the port can only have one
     reader). Set DUALBOOT_SERIAL_LOG=/path/to/log to use it."""
     def __init__(self, path):
+        self.source = self.logpath = path
         self.f = open(path, 'rb'); self.f.seek(0, 2); self.buf = b''
 
     def available(self): return True
+
+    def close(self): self.f.close()
 
     def pump(self, secs=1.0):
         d = self.f.read()
@@ -304,7 +327,14 @@ def serial_source(logpath):
     ext = os.environ.get('DUALBOOT_SERIAL_LOG')
     if ext:
         return SerialFileTail(ext)
-    return Serial(logpath)
+    ser = Serial(logpath)
+    try:
+        if not ser._open(fresh=True):
+            raise OSError(ser.open_error)
+    except BaseException:
+        ser.close()
+        raise
+    return ser
 
 # ----------------------------------------------------------------------------------------------- ticket from UART
 def parse_ticket(log_bytes):
