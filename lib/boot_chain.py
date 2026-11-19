@@ -15,9 +15,9 @@ OSB = '--osb' in sys.argv or OSBJB
 RESUME = '--resume' in sys.argv   # OS B normal boot instead of the setup ramdisk
 C = osbcfg.work('osbjb' if OSBJB else 'osb' if OSB else 'chain')
 CTL = os.environ.get('USBLITER8CTL') or os.path.join(JB, 'tools/usbliter8ctl')
-FIRMWARE = [('ANE.img4', 0), ('AOP.img4', 0), ('AVE.img4', 1), ('SPTM.img4', 3), ('TXM.img4', 0),
-            ('GFX.img4', 0), ('ISP.img4', 1), ('PMP.img4', 0), ('StaticTrustCache.img4', 0),
-            ('RestoreTrustCache.img4', 0), ('SIO.img4', 0), ('WCH.img4', 0)]
+FIRMWARE = [('ANE.img4', 0), ('WCH.img4', 0), ('PMP.img4', 0), ('AOP.img4', 0), ('AVE.img4', 1),
+            ('GFX.img4', 0), ('ISP.img4', 1), ('SIO.img4', 0),
+            ('RestoreTrustCache.img4', 0), ('TXM.img4', 0), ('SPTM.img4', 3)]
 OPTIONAL = {'WCH.img4'}             # wireless-charging firmware: iPads have none
 if OSB: FIRMWARE = [f for f in FIRMWARE if f[0] != 'StaticTrustCache.img4']   # System TC sent as rtsc (mk_osb.py)
 
@@ -110,6 +110,7 @@ def stages_from_firmware():
         time.sleep(2)
     else:
         print("[4] ramdisk", flush=True)
+        time.sleep(2)
         send('RestoreRamdisk.img4', 'ramdisk', 2)
     print("[5] devicetree, SEP, kernel", flush=True)
     send('DeviceTree.img4', 'devicetree')
