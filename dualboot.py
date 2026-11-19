@@ -114,11 +114,16 @@ def cmd_doctor(a):
     say("Mac OK: all tools present (irecovery, iproxy, ldid, ipsw, pyimg4, pyusb, usbliter8ctl)")
 
 def cmd_ssh(a):
-    q = irec_query()
-    ecid = a.ecid or (q or {}).get('ECID')
+    import re
+
+    ecid = a.ecid if a.ecid is not None else (irec_query() or {}).get('ECID')
+    if ecid is not None and not re.fullmatch(r'(?:0x)?[0-9a-f]{1,16}', ecid, re.IGNORECASE):
+        die(f"invalid ECID {ecid!r}. Use up to 16 hexadecimal digits.")
     cands = [Workspace(d.split('/')[-1].split('-')[0], find_profile(s.get('board'), s.get('build')))
              for d, s in (workspaces_for(ecid) if ecid else []) if s.get('installed')]
     if not cands:
+        if ecid:
+            die(f"no installed 2nd Data workspace for ECID {ecid}")
         # phone is booted (not in irecovery): take the only installed workspace
         alls = [(d, json.load(open(os.path.join(d, 'state.json')))) for d in glob.glob(os.path.join(WORKROOT, '*'))
                 if os.path.exists(os.path.join(d, 'state.json')) and not os.path.basename(d).startswith(OS2_PREFIX)]
